@@ -1,20 +1,34 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: AWS Serverless Spring Boot 2 API - org.umaxcode::task-management-system
+
+Parameters:
+  TasksTableName:
+    Description: Dynamodb table for tasks
+    Type: String
+    Default: tasks
+
 Globals:
   Api:
     EndpointConfiguration: REGIONAL
+  Function:
+    Runtime: java21
+    MemorySize: 512
+    Timeout: 30
 
 Resources:
   TaskManagementSystemFunction:
     Type: AWS::Serverless::Function
     Properties:
       Handler: org.umaxcode.StreamLambdaHandler::handleRequest
-      Runtime: java21
       CodeUri: .
-      MemorySize: 512
-      Policies: AWSLambdaBasicExecutionRole
-      Timeout: 30
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TasksTable
+      Environment:
+        Variables:
+          TASKS_TABLE_NAME: !Ref TasksTableName
       Events:
         ProxyResource:
           Type: Api
@@ -22,9 +36,24 @@ Resources:
             Path: /{proxy+}
             Method: any
 
+  TasksTable: # Creates the DynamoDB table for user tasks
+    Type: AWS::DynamoDB::Table
+    TableName: !Ref TasksTableName
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: "TaskId"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "userId"
+          KeyType: "HASH"
+      BillingMode: PAY_PER_REQUEST
+
 Outputs:
   TaskManagementSystemApi:
     Description: URL for application
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/ping'
     Export:
       Name: TaskManagementSystemApi
+  TaskTableName:
+    Description: 'The name of the DynamoDB Task table'
+    Value: !Ref TaskTable

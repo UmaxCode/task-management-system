@@ -7,6 +7,13 @@ Parameters:
     Description: Dynamodb table for tasks
     Type: String
     Default: tasks
+  CognitoCallbackURL:
+    Description: Cognito callback url
+    Type: String
+  UserPoolAdminGroupName:
+    Description: User pool group name for API administrators
+    Type: String
+    Default: apiAdmins
 
 Globals:
   Api:
@@ -26,9 +33,21 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - DynamoDBCrudPolicy:
             TableName: !Ref TasksTable
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:AdminCreateUser
+              - cognito-idp:ListUsers
+              - cognito-idp:AdminUpdateUserAttributes
+            Resource: !GetAtt UserPool.Arn
       Environment:
         Variables:
           TASKS_TABLE_NAME: !Ref TasksTableName
+          AWS_COGNITO_USER_POOL_ID: !Ref UserPool
+          TASKS_ASSIGNMENT_NOTIFICATION_TOPIC_ARN: !Ref TasksAssignmentNotificationTopic
+          TASKS_DEADLINE_NOTIFICATION_TOPIC_ARN: !Ref TasksDeadlineNotificationTopic
+          CLOSED_TASKS_NOTIFICATION_TOPIC_ARN: !Ref ClosedTasksNotificationTopic
+          REOPENED_TASKS_NOTIFICATION_TOPIC_ARN: !Ref ReopenedTasksNotificationTopic
       Events:
         ProxyResource:
           Type: Api
@@ -36,15 +55,113 @@ Resources:
             Path: /{proxy+}
             Method: any
 
+  UserPool: # Cognito User Pool
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${AWS::StackName}-task-management-user-pool
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      Schema:
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+        - Name: role
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          TemporaryPasswordValidityDays: 7
+
+  UserPoolClient: # Cognito User Pool Client
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub ${AWS::StackName}-task-management-user-pool-client
+      GenerateSecret: true
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      AllowedOAuthScopes:
+        - email
+        - openid
+      SupportedIdentityProviders:
+        - COGNITO
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_USER_SRP_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      CallbackURLs:
+        - !Ref CognitoCallbackURL
+      UserPoolId: !Ref UserPool
+      RefreshTokenValidity: 10
+      AccessTokenValidity: 3
+      IdTokenValidity: 3
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+
+  UserPoolDomain: # Cognito User Pool Domain
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub ${AWS::StackName}-task-management-user-pool-domain
+      UserPoolId: !Ref UserPool
+
+  ApiAdministratorsUserPoolGroup: # Cognito User Group for administrators
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      Description: User group for API Administrators
+      GroupName: !Ref UserPoolAdminGroupName
+      Precedence: 0
+      UserPoolId: !Ref UserPool
+
+  # Define SNS Topics
+  TasksAssignmentNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: tasks-assignment-notifications
+      DisplayName: "Task Assignment Notifications"
+
+  TasksDeadlineNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: tasks-deadline-notifications
+      DisplayName: "Task Deadline Notifications"
+
+  ClosedTasksNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: closed-tasks-notifications
+      DisplayName: "Closed Tasks Notifications"
+
+  ReopenedTasksNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: reopened-tasks-notifications
+      DisplayName: "Reopened Tasks Notifications"
+
   TasksTable: # Creates the DynamoDB table for user tasks
     Type: AWS::DynamoDB::Table
-    TableName: !Ref TasksTableName
     Properties:
+      TableName: !Ref TasksTableName
       AttributeDefinitions:
         - AttributeName: "TaskId"
           AttributeType: "S"
       KeySchema:
-        - AttributeName: "userId"
+        - AttributeName: "TaskId"
           KeyType: "HASH"
       BillingMode: PAY_PER_REQUEST
 
@@ -54,6 +171,43 @@ Outputs:
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/ping'
     Export:
       Name: TaskManagementSystemApi
+
   TaskTableName:
     Description: 'The name of the DynamoDB Task table'
-    Value: !Ref TaskTable
+    Value: !Ref TasksTable
+
+  UserPool:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+
+  UserPoolClient:
+    Description: Cognito User Pool Application Client ID
+    Value: !Ref UserPoolClient
+
+  UserPoolAdminGroupName:
+    Description: User Pool group name for API administrators
+    Value: !Ref UserPoolAdminGroupName
+
+  CognitoLoginURL:
+    Description: Cognito User Pool Application Client Hosted Login UI URL
+    Value: !Sub "https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com/login?client_id=${UserPoolClient}&response_type=code&redirect_uri=${CognitoCallbackURL}"
+
+  CognitoAuthCommand:
+    Description: AWS CLI command for Amazon Cognito User Pool authentication
+    Value: !Sub "aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id ${UserPoolClient} --auth-parameters USERNAME=<username>,PASSWORD=<password> --query 'AuthenticationResult.IdToken' --output text"
+
+  TasksAssignmentNotificationTopicArn:
+    Description: "ARN of the Task Assignment Notification SNS Topic"
+    Value: !Ref TasksAssignmentNotificationTopic
+
+  TasksDeadlineNotificationTopicArn:
+    Description: "ARN of the Task Deadline Notification SNS Topic"
+    Value: !Ref TasksDeadlineNotificationTopic
+
+  ClosedTasksNotificationTopicArn:
+    Description: "ARN of the Closed Tasks Notification SNS Topic"
+    Value: !Ref ClosedTasksNotificationTopic
+
+  ReopenedTasksNotificationTopicArn:
+    Description: "ARN of the Reopened Tasks Notification SNS Topic"
+    Value: !Ref ReopenedTasksNotificationTopic

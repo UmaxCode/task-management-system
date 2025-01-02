@@ -12,5 +12,5 @@ import lombok.Setter;
 public class SuccessResponse {
 
     private String message;
-    private Object date;
+    private Object data;
 }

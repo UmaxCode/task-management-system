@@ -294,10 +294,10 @@ Resources:
     Properties:
       TableName: !Ref TasksTableName
       AttributeDefinitions:
-        - AttributeName: "TaskId"
+        - AttributeName: "taskId"
           AttributeType: "S"
       KeySchema:
-        - AttributeName: "TaskId"
+        - AttributeName: "taskId"
           KeyType: "HASH"
       BillingMode: PAY_PER_REQUEST
 

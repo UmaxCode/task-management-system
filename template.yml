@@ -40,14 +40,16 @@ Resources:
               - cognito-idp:ListUsers
               - cognito-idp:AdminUpdateUserAttributes
             Resource: !GetAtt UserPool.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - lambda:InvokeFunction
+            Resource: !GetAtt PostConfirmationFunction.Arn
       Environment:
         Variables:
           TASKS_TABLE_NAME: !Ref TasksTableName
           AWS_COGNITO_USER_POOL_ID: !Ref UserPool
-          TASKS_ASSIGNMENT_NOTIFICATION_TOPIC_ARN: !Ref TasksAssignmentNotificationTopic
-          TASKS_DEADLINE_NOTIFICATION_TOPIC_ARN: !Ref TasksDeadlineNotificationTopic
-          CLOSED_TASKS_NOTIFICATION_TOPIC_ARN: !Ref ClosedTasksNotificationTopic
-          REOPENED_TASKS_NOTIFICATION_TOPIC_ARN: !Ref ReopenedTasksNotificationTopic
+          POST_CONFIRMATION_LAMBDA_ARN: !GetAtt PostConfirmationFunction.Arn
       Events:
         ProxyResource:
           Type: Api
@@ -152,6 +154,140 @@ Resources:
     Properties:
       TopicName: reopened-tasks-notifications
       DisplayName: "Reopened Tasks Notifications"
+
+  SNSTopicSubscriptionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: .
+      Handler: org.umaxcode.SNSTopicSubscriptionHandler::handleRequest
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - sns:Subscribe
+            Resource:
+              - !Ref TasksAssignmentNotificationTopic
+              - !Ref TasksDeadlineNotificationTopic
+              - !Ref ClosedTasksNotificationTopic
+              - !Ref ReopenedTasksNotificationTopic
+
+  PostConfirmationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.UserCreationConfirmationHandler::handleRequest
+      CodeUri: .
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !GetAtt StepFunctionsStateMachineSNSSub.Arn
+      Environment:
+        Variables:
+          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSub.Arn
+
+  SNSSubStateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsExecutionPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: !GetAtt SNSTopicSubscriptionFunction.Arn
+
+  StepFunctionsStateMachineSNSSub:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      RoleArn: !GetAtt SNSSubStateMachineRole.Arn
+      DefinitionString:
+        !Sub |
+        {
+          "Comment": "SNS subscription state machine",
+          "StartAt": "ProcessSNSSubscription",
+          "States": {
+            "ProcessSNSSubscription": {
+              "Type": "Parallel",
+              "Branches": [
+                {
+                  "StartAt": "TasksAssignmentNotificationSubscription",
+                  "States": {
+                    "TasksAssignmentNotificationSubscription": {
+                      "Type": "Task",
+                      "Resource": "${SNSTopicSubscriptionFunction.Arn}",
+                      "Parameters": {
+                        "topicArn": "${TasksAssignmentNotificationTopic}",
+                        "email.$": "$.email"
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                {
+                  "StartAt": "TasksDeadlineNotificationSubscription",
+                  "States": {
+                    "TasksDeadlineNotificationSubscription": {
+                      "Type": "Task",
+                      "Resource": "${SNSTopicSubscriptionFunction.Arn}",
+                      "Parameters": {
+                        "topicArn": "${TasksDeadlineNotificationTopic}",
+                        "email.$": "$.email"
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                 {
+                  "StartAt": "ClosedTasksNotificationSubscription",
+                  "States": {
+                    "ClosedTasksNotificationSubscription": {
+                      "Type": "Task",
+                      "Resource": "${SNSTopicSubscriptionFunction.Arn}",
+                      "Parameters": {
+                        "topicArn": "${ClosedTasksNotificationTopic}",
+                        "email.$": "$.email"
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                {
+                  "StartAt": "ReopenedTasksNotificationSubscription",
+                  "States": {
+                    "ReopenedTasksNotificationSubscription": {
+                      "Type": "Task",
+                      "Resource": "${SNSTopicSubscriptionFunction.Arn}",
+                      "Parameters": {
+                        "topicArn": "${ReopenedTasksNotificationTopic}",
+                        "email.$": "$.email"
+                      },
+                      "End": true
+                    }
+                  }
+                }
+              ],
+              "Next": "Complete"
+            },
+            "Complete": {
+              "Type": "Succeed"
+            }
+          }
+        }
 
   TasksTable: # Creates the DynamoDB table for user tasks
     Type: AWS::DynamoDB::Table

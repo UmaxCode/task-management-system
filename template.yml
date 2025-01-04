@@ -166,6 +166,7 @@ Resources:
             Effect: Allow
             Action:
               - sns:Subscribe
+              - sns:SetSubscriptionAttributes
             Resource:
               - !Ref TasksAssignmentNotificationTopic
               - !Ref TasksDeadlineNotificationTopic
@@ -300,6 +301,81 @@ Resources:
         - AttributeName: "taskId"
           KeyType: "HASH"
       BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_IMAGE  # Capture the new item after each write
+
+  SQSLambdaSendMessageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.SQSLambdaSendMessageHandler::handleRequest
+      CodeUri: .
+      Policies:
+        - SQSSendMessagePolicy: # Predefined policy to send messages
+            QueueName: tasks-queue
+        - DynamoDBStreamReadPolicy: # Predefined policy to read from DynamoDB streams
+            TableName: !Ref TasksTable
+            StreamName: !GetAtt TasksTable.StreamArn
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref TasksQueue
+          TASKS_ASSIGNMENT_NOTIFICATION_TOPIC_ARN: !Ref TasksAssignmentNotificationTopic
+      Events:
+        DynamoDBStreamEvent:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt TasksTable.StreamArn
+            BatchSize: 10  # Number of records to process in one invocation
+            StartingPosition: TRIM_HORIZON
+
+  SQSLambdaReadMessageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.SQSLambdaReadMessageHandler::handleRequest
+      CodeUri: .
+      Policies:
+        - Statement:
+            Effect: Allow
+            Action:
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sns:Publish
+            Resource:
+              - !GetAtt TasksQueue.Arn
+              - !Ref TasksAssignmentNotificationTopic
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref TasksQueue
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt TasksQueue.Arn
+            BatchSize: 5
+
+  TasksQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: tasks-queue
+
+  TaskQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref TasksQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowLambdaToManipulateMessages
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+            Resource: !GetAtt TasksQueue.Arn
 
 Outputs:
   TaskManagementSystemApi:

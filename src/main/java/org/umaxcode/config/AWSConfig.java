@@ -8,6 +8,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityPr
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sqs.SqsClient;
 
 @Configuration
 public class AWSConfig {
@@ -30,16 +31,23 @@ public class AWSConfig {
     }
 
     @Bean
-    public LambdaClient lambdaClient(){
+    public LambdaClient lambdaClient() {
         return LambdaClient.builder()
                 .region(Region.of(awsRegion))
                 .build();
     }
 
     @Bean
-    public DynamoDbClient dynamoDbClient(){
+    public DynamoDbClient dynamoDbClient() {
         return DynamoDbClient.builder()
                 .region(Region.of(awsRegion))
+                .build();
+    }
+
+    @Bean
+    public SqsClient sqsClient() {
+        return SqsClient.builder()
+                .region(Region.of(awsRegion)) // Replace with your AWS region
                 .build();
     }
 }

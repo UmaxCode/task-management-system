@@ -12,4 +12,6 @@ public interface TaskManagementService {
     TaskDto readItem(String id);
 
     List<TaskDto> getAllTasks();
+
+    List<TaskDto> getUsersTasks(String email);
 }

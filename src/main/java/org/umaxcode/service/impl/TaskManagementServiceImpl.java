@@ -80,6 +80,23 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     @Override
+    public List<TaskDto> getUsersTasks(String email) {
+
+        QueryRequest queryRequest = QueryRequest.builder()
+                .tableName(tasksTableName)  // Main table name
+                .indexName("responsibilityIndex")   // GSI name
+                .keyConditionExpression("responsibility = :email")
+                .expressionAttributeValues(Map.of(
+                        ":email", AttributeValue.builder().s(email).build()
+                ))
+                .build();
+
+        QueryResponse queryResponse = dynamoDbClient.query(queryRequest);
+
+        return TaskMapper.mapToListTaskDto(queryResponse.items());
+    }
+
+    @Override
     public List<TaskDto> getAllTasks() {
         ScanRequest scanRequest = ScanRequest.builder()
                 .tableName(tasksTableName)

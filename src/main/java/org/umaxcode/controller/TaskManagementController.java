@@ -41,6 +41,17 @@ public class TaskManagementController {
                 .build();
     }
 
+    @GetMapping("/users/{email}")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse retrieveUserTasks(@PathVariable String email) {
+
+        List<TaskDto> usersTasks = taskManagementService.getUsersTasks(email);
+        return SuccessResponse.builder()
+                .message("Tasks retrieved successfully")
+                .data(usersTasks)
+                .build();
+    }
+
     @GetMapping
     @PreAuthorize(value = "hasRole('apiAdmins')")
     @ResponseStatus(HttpStatus.OK)

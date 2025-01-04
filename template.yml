@@ -299,6 +299,8 @@ Resources:
           AttributeType: "S"
         - AttributeName: "responsibility"
           AttributeType: "S"
+        - AttributeName: "status"
+          AttributeType: "S"
       KeySchema:
         - AttributeName: "taskId"
           KeyType: "HASH"
@@ -306,6 +308,18 @@ Resources:
         - IndexName: "responsibilityIndex"  # Name of the GSI
           KeySchema:
             - AttributeName: "responsibility"  # Partition key for the GSI
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+        - IndexName: "deadlineIndex"  # Name of the GSI
+          KeySchema:
+            - AttributeName: "deadline"  # Partition key for the GSI
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+        - IndexName: "statusIndex"  # Name of the GSI
+          KeySchema:
+            - AttributeName: "status"  # Partition key for the GSI
               KeyType: "HASH"
           Projection:
             ProjectionType: ALL
@@ -385,6 +399,27 @@ Resources:
               - sqs:DeleteMessage
               - sqs:GetQueueAttributes
             Resource: !GetAtt TasksQueue.Arn
+
+  CheckTasksDeadlinesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.EventBridgeCheckDeadlinesHandler::handleRequest
+      CodeUri: .
+      Policies:
+        - SQSSendMessagePolicy: # Predefined policy to send messages
+            QueueName: tasks-queue
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref TasksQueue
+          TASKS_DEADLINE_NOTIFICATION_TOPIC_ARN: !Ref TasksDeadlineNotificationTopic
+          TASKS_CLOSED_NOTIFICATION_TOPIC_ARN: !Ref ClosedTasksNotificationTopic
+      Events:
+        CWSchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: 'rate(3 minute)'
+            Name: TaskDeadlineChecker
+            Description: "Help checks the dynamoDB table(tasks) if a task is approaching deadline"
 
 Outputs:
   TaskManagementSystemApi:

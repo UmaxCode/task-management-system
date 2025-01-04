@@ -297,9 +297,18 @@ Resources:
       AttributeDefinitions:
         - AttributeName: "taskId"
           AttributeType: "S"
+        - AttributeName: "responsibility"
+          AttributeType: "S"
       KeySchema:
         - AttributeName: "taskId"
           KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        - IndexName: "responsibilityIndex"  # Name of the GSI
+          KeySchema:
+            - AttributeName: "responsibility"  # Partition key for the GSI
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
       StreamSpecification:
         StreamViewType: NEW_IMAGE  # Capture the new item after each write

@@ -23,10 +23,9 @@ public class TaskManagementController {
     @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse createTask(@RequestBody TasksCreationDto request) {
 
-        Object response = taskManagementService.createItem(request);
+        taskManagementService.createItem(request);
         return SuccessResponse.builder()
                 .message("Task created successfully")
-                .data(response)
                 .build();
     }
 
@@ -47,9 +46,9 @@ public class TaskManagementController {
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse retrieveAllTasks() {
 
-        List<Object> response = taskManagementService.getAllTasks();
+        List<TaskDto> response = taskManagementService.getAllTasks();
         return SuccessResponse.builder()
-                .message("Task retrieved successfully")
+                .message("Tasks retrieved successfully")
                 .data(response)
                 .build();
     }

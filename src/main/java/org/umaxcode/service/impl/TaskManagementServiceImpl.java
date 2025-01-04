@@ -1,15 +1,21 @@
 package org.umaxcode.service.impl;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.umaxcode.domain.dto.request.TasksCreationDto;
 import org.umaxcode.domain.dto.response.TaskDto;
 import org.umaxcode.domain.enums.TaskStatus;
 import org.umaxcode.exception.TaskManagementException;
+import org.umaxcode.mapper.TaskMapper;
 import org.umaxcode.service.TaskManagementService;
+import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class TaskManagementServiceImpl implements TaskManagementService {
@@ -17,13 +23,16 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     private final DynamoDbClient dynamoDbClient;
     private final String tasksTableName;
 
-    public TaskManagementServiceImpl(DynamoDbClient dynamoDbClient) {
+    @Value("${application.aws.userPoolId}")
+    private String userPoolId;
+
+    public TaskManagementServiceImpl(DynamoDbClient dynamoDbClient, CognitoIdentityProviderClient cognitoClient) {
         this.dynamoDbClient = dynamoDbClient;
         this.tasksTableName = System.getenv("TASKS_TABLE_NAME");
     }
 
     @Override
-    public Object createItem(TasksCreationDto request) {
+    public void createItem(TasksCreationDto request) {
 
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("taskId", AttributeValue.builder().s(UUID.randomUUID().toString()).build());
@@ -40,7 +49,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                 .build();
 
         PutItemResponse putItemResponse = dynamoDbClient.putItem(putRequest);
-        return putItemResponse.attributes();
+        System.out.println("results " + putItemResponse.attributes());
     }
 
     @Override
@@ -71,13 +80,13 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     @Override
-    public List<Object> getAllTasks() {
+    public List<TaskDto> getAllTasks() {
         ScanRequest scanRequest = ScanRequest.builder()
                 .tableName(tasksTableName)
                 .build();
 
         ScanResponse scanResponse = dynamoDbClient.scan(scanRequest);
 
-        return Arrays.asList(scanResponse.items().toArray());
+        return TaskMapper.mapToListTaskDto(scanResponse.items());
     }
 }

@@ -15,4 +15,5 @@ public class TaskDto {
     TaskStatus status;
     String deadline;
     String responsibility;
+    String comment;
 }

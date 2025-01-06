@@ -1,5 +1,7 @@
 package org.umaxcode.service;
 
+import org.umaxcode.domain.dto.request.TaskCommentUpdateDto;
+import org.umaxcode.domain.dto.request.TaskStatusUpdateDto;
 import org.umaxcode.domain.dto.request.TasksCreationDto;
 import org.umaxcode.domain.dto.response.TaskDto;
 
@@ -14,4 +16,8 @@ public interface TaskManagementService {
     List<TaskDto> getAllTasks();
 
     List<TaskDto> getUsersTasks(String email);
+
+    TaskDto updateTaskStatus(String id, TaskStatusUpdateDto request);
+
+    TaskDto updateTaskComment(String id, TaskCommentUpdateDto request);
 }

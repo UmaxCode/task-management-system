@@ -327,7 +327,7 @@ Resources:
       StreamSpecification:
         StreamViewType: NEW_IMAGE  # Capture the new item after each write
 
-  SQSLambdaSendMessageFunction:
+  SQSDynamodbStreamLambdaSendMessageHandler:
     Type: AWS::Serverless::Function
     Properties:
       Handler: org.umaxcode.SQSLambdaSendMessageHandler::handleRequest

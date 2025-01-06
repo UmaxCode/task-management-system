@@ -12,11 +12,11 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SQSLambdaSendMessageHandler implements RequestHandler<DynamodbEvent, String> {
+public class SQSDynamodbStreamLambdaSendMessageHandler implements RequestHandler<DynamodbEvent, String> {
 
     private final SqsClient sqsClient;
 
-    public SQSLambdaSendMessageHandler() {
+    public SQSDynamodbStreamLambdaSendMessageHandler() {
         sqsClient = SqsClient.create();
     }
 

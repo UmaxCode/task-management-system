@@ -420,13 +420,23 @@ Resources:
               - sqs:ReceiveMessage
               - sqs:DeleteMessage
               - sqs:GetQueueAttributes
-              - sns:Publish
             Resource:
               - !GetAtt TasksQueue.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sns:Publish
+            Resource:
               - !Ref TasksAssignmentNotificationTopic
+        - Statement:
+            Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Environment:
         Variables:
-          QUEUE_URL: !Ref TasksQueue
+          STEP_FUNCTION_ARN: StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Events:
         SQSTrigger:
           Type: SQS

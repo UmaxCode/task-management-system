@@ -120,6 +120,11 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
 
             Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
 
+            messageAttributes.put("taskId", MessageAttributeValue.builder()
+                    .dataType("String")
+                    .stringValue(item.get("taskId").s())
+                    .build());
+
             messageAttributes.put("name", MessageAttributeValue.builder()
                     .dataType("String")
                     .stringValue(item.get("name").s())

@@ -210,7 +210,10 @@ Resources:
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                Resource: !GetAtt SNSTopicSubscriptionFunction.Arn
+                Resource:
+                  - !GetAtt SNSTopicSubscriptionFunction.Arn
+                  - !GetAtt TaskStatusUpdateFunction.Arn
+                  - !GetAtt SendTaskDeadlineNotificationFunction.Arn
 
   StepFunctionsStateMachineSNSSubAndTaskDeadlineNot:
     Type: AWS::StepFunctions::StateMachine
@@ -445,7 +448,7 @@ Resources:
               - !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Environment:
         Variables:
-          STEP_FUNCTION_ARN: StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
+          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Events:
         SQSTrigger:
           Type: SQS
@@ -515,6 +518,7 @@ Resources:
             Resource: !GetAtt TasksTable.Arn
       Environment:
         Variables:
+          TASKS_TABLE_NAME: !Ref TasksTable
           QUEUE_URL: !Ref TasksQueue
 
   SendTaskDeadlineNotificationFunction:

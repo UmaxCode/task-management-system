@@ -3,6 +3,10 @@ package org.umaxcode;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import software.amazon.awssdk.services.sfn.SfnClient;
+import software.amazon.awssdk.services.sfn.model.StartExecutionRequest;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
@@ -14,9 +18,11 @@ import java.util.Map;
 public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, String> {
 
     private final SnsClient snsClient;
+    private final SfnClient stepFunctionsClient;
 
     public SQSLambdaReadMessageHandler() {
         this.snsClient = SnsClient.create();
+        this.stepFunctionsClient = SfnClient.create();
     }
 
     @Override
@@ -29,6 +35,7 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
             System.out.println("Message body: " + messageBody);
             System.out.println("Message attributes: " + messageReason);
 
+            String taskId = message.getMessageAttributes().get("taskId").getStringValue();
             String receiver = message.getMessageAttributes().get("receiver").getStringValue();
             String name = message.getMessageAttributes().get("name").getStringValue();
             String description = message.getMessageAttributes().get("description").getStringValue();
@@ -41,7 +48,11 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
                         topicArn, "New Task Assignment");
             } else if ("task-hit-deadline".equals(messageReason)) {
                 System.out.println("Sending task deadline notification");
-                triggerStepFunction();
+                try {
+                    triggerStepFunction(taskId, topicArn, name, description, receiver, deadline);
+                } catch (JsonProcessingException e) {
+                    e.printStackTrace();
+                }
             } else if ("task-approach-deadline".equals(messageReason)) {
                 System.out.println("Sending task approach deadline notification");
                 sendTaskNotification(receiver, name, description, deadline,
@@ -81,8 +92,29 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
         }
     }
 
-    private void triggerStepFunction() {
+    private void triggerStepFunction(String taskId, String topicArn, String name, String description,
+                                     String receiver, String deadline ) throws JsonProcessingException {
+        Map<String, String> jsonMap = new HashMap<>();
+        jsonMap.put("taskId", taskId);
+        jsonMap.put("workflowType", "task-deadline-hit");
+        jsonMap.put("taskName", name);
+        jsonMap.put("taskDescription", description);
+        jsonMap.put("receiver", receiver);
+        jsonMap.put("topicArn", topicArn);
+        jsonMap.put("taskDeadline", deadline);
 
-        System.out.println("Step function triggered");
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        String jsonString = objectMapper.writeValueAsString(jsonMap);
+
+        String stepFunctionArn = System.getenv("STEP_FUNCTION_ARN");
+        StartExecutionRequest startExecutionRequest = StartExecutionRequest.builder()
+                .stateMachineArn(stepFunctionArn)
+                .input(jsonString)
+                .build();
+
+        stepFunctionsClient.startExecution(startExecutionRequest);
+
+        System.out.println("Step function triggered : task hit deadline");
     }
 }

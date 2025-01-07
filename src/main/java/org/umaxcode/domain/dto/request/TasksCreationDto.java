@@ -2,13 +2,13 @@ package org.umaxcode.domain.dto.request;
 
 import org.umaxcode.domain.enums.TaskStatus;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record TasksCreationDto(
         String name,
         String description,
         TaskStatus status,
-        LocalDate deadline,
+        LocalDateTime deadline,
         String responsibility
 ) {
 }

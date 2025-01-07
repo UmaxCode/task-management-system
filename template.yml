@@ -360,6 +360,8 @@ Resources:
           AttributeType: "S"
         - AttributeName: "status"
           AttributeType: "S"
+        - AttributeName: "isNotified"
+          AttributeType: "S"
       KeySchema:
         - AttributeName: "taskId"
           KeyType: "HASH"
@@ -382,6 +384,12 @@ Resources:
               KeyType: "HASH"
           Projection:
             ProjectionType: ALL
+        - IndexName: "isNotifiedIndex"  # Name of the GSI
+          KeySchema:
+            - AttributeName: "isNotified"  # Partition key for the GSI
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
       StreamSpecification:
         StreamViewType: NEW_IMAGE  # Capture the new item after each write
@@ -389,7 +397,7 @@ Resources:
   SQSDynamodbStreamLambdaSendMessageHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: org.umaxcode.SQSLambdaSendMessageHandler::handleRequest
+      Handler: org.umaxcode.SQSDynamodbStreamLambdaSendMessageHandler::handleRequest
       CodeUri: .
       Policies:
         - SQSSendMessagePolicy: # Predefined policy to send messages
@@ -477,9 +485,12 @@ Resources:
       Policies:
         - SQSSendMessagePolicy: # Predefined policy to send messages
             QueueName: tasks-queue
+        - DynamoDBReadPolicy:
+            TableName: !Ref TasksTable
       Environment:
         Variables:
           QUEUE_URL: !Ref TasksQueue
+          TASKS_TABLE_NAME: !Ref TasksTable
           TASKS_DEADLINE_NOTIFICATION_TOPIC_ARN: !Ref TasksDeadlineNotificationTopic
           TASKS_CLOSED_NOTIFICATION_TOPIC_ARN: !Ref ClosedTasksNotificationTopic
       Events:

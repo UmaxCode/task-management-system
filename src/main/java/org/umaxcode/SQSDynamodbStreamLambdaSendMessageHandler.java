@@ -34,6 +34,11 @@ public class SQSDynamodbStreamLambdaSendMessageHandler implements RequestHandler
                 // Add attributes to the message
                 Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
 
+                messageAttributes.put("taskId", MessageAttributeValue.builder()
+                        .dataType("String")
+                        .stringValue(newImage.get("taskId").getS())
+                        .build());
+
                 messageAttributes.put("name", MessageAttributeValue.builder()
                         .dataType("String")
                         .stringValue(newImage.get("name").getS())

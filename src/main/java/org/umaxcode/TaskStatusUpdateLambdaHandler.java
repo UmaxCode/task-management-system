@@ -23,7 +23,7 @@ public class TaskStatusUpdateLambdaHandler implements RequestHandler<Map<String,
 
         // Define the primary key
         Map<String, AttributeValue> key = Map.of(
-                "taskId", AttributeValue.builder().s(event.get("id")).build()
+                "taskId", AttributeValue.builder().s(event.get("taskId")).build()
         );
 
         // Create the UpdateItemRequest

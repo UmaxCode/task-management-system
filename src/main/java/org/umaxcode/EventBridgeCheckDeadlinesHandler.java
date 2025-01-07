@@ -42,6 +42,7 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
     @Override
     public Void handleRequest(Object o, Context context) {
 
+        System.out.println("Running EventBridgeCheckDeadlinesHandler");
         CompletableFuture<Void> checkHitDeadline = CompletableFuture
                 .runAsync(this::checkTasksDeadlineDueAndWriteToSQS, executor);
 
@@ -50,14 +51,7 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
 
         CompletableFuture<Void> allTasks = CompletableFuture.allOf(checkHitDeadline, checkNearingDeadline);
 
-        allTasks.thenRun(() -> {
-            System.out.println("All  concurrent execution completed successfully!");
-            executor.shutdown();
-        }).exceptionally(ex -> {
-            System.err.println("An error occurred: " + ex.getMessage());
-            executor.shutdown();
-            return null;
-        });
+        allTasks.join();
 
         return null;
     }
@@ -68,17 +62,20 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
 
         QueryRequest queryRequest = QueryRequest.builder()
                 .tableName(tasksTableName)  // Main table name
-                .indexName("deadlineIndex")   // GSI name
-                .keyConditionExpression("deadline <= :deadline")
-                .filterExpression("status <> :completed AND status <> :expired")
+                .indexName("statusIndex")   // GSI name
+                .keyConditionExpression("#status = :open")
+                .filterExpression("deadline <= :deadline")
                 .expressionAttributeValues(Map.of(
                         ":deadline", AttributeValue.builder().s(now.toString()).build(),
-                        ":completed", AttributeValue.builder().s("completed").build(),
-                        ":expired", AttributeValue.builder().s("expired").build()
+                        ":open", AttributeValue.builder().s("open").build()
+                )).expressionAttributeNames(Map.of(
+                        "#status", "status"
                 ))
                 .build();
 
         QueryResponse queryResponse = dynamoDbClient.query(queryRequest);
+
+        System.out.println("Info: checkTasksDeadlineDueAndWriteToSQS");
 
         if (queryResponse.hasItems()) {
             writeToQueue(queryResponse, "A task has reach deadline",
@@ -95,17 +92,23 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
         // Query tasks nearing their deadlines
         QueryRequest queryRequest = QueryRequest.builder()
                 .tableName(tasksTableName)
-                .indexName("deadlineIndex") // GSI on `deadline`
-                .keyConditionExpression("deadline BETWEEN :current AND :oneHourLater")
-                .filterExpression("status <> :completed and isNotified = :false")
+                .indexName("statusIndex") // GSI on `deadline`
+                .keyConditionExpression("#status = :open")
+                .filterExpression("deadline BETWEEN :current AND :oneHourLater AND isNotified = :false")
                 .expressionAttributeValues(Map.of(
                         ":current", AttributeValue.builder().s(currentTime.toString()).build(),
                         ":oneHourLater", AttributeValue.builder().s(oneHourFromNow.toString()).build(),
-                        ":completed", AttributeValue.builder().s("completed").build(),
+                        ":open", AttributeValue.builder().s("open").build(),
                         ":false", AttributeValue.builder().bool(false).build()
-                )).build();
+                )).expressionAttributeNames(Map.of(
+                        "#status", "status"
+                ))
+                .build();
 
         QueryResponse queryResponse = dynamoDbClient.query(queryRequest);
+
+        System.out.println("Info: checkTasksDeadlineDueAndWriteToSQS");
+
 
         if (queryResponse.hasItems()) {
             writeToQueue(queryResponse, "A task has approach deadline",

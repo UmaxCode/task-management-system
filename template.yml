@@ -185,10 +185,10 @@ Resources:
             Action:
               - states:StartExecution
             Resource:
-              - !GetAtt StepFunctionsStateMachineSNSSub.Arn
+              - !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Environment:
         Variables:
-          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSub.Arn
+          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
 
   SNSSubStateMachineRole:
     Type: AWS::IAM::Role
@@ -212,83 +212,139 @@ Resources:
                   - lambda:InvokeFunction
                 Resource: !GetAtt SNSTopicSubscriptionFunction.Arn
 
-  StepFunctionsStateMachineSNSSub:
+  StepFunctionsStateMachineSNSSubAndTaskDeadlineNot:
     Type: AWS::StepFunctions::StateMachine
     Properties:
       RoleArn: !GetAtt SNSSubStateMachineRole.Arn
       DefinitionString:
         !Sub |
         {
-          "Comment": "SNS subscription state machine",
-          "StartAt": "ProcessSNSSubscription",
-          "States": {
-            "ProcessSNSSubscription": {
-              "Type": "Parallel",
-              "Branches": [
-                {
-                  "StartAt": "TasksAssignmentNotificationSubscription",
-                  "States": {
-                    "TasksAssignmentNotificationSubscription": {
-                      "Type": "Task",
-                      "Resource": "${SNSTopicSubscriptionFunction.Arn}",
-                      "Parameters": {
-                        "topicArn": "${TasksAssignmentNotificationTopic}",
-                        "email.$": "$.email"
-                      },
-                      "End": true
-                    }
-                  }
-                },
-                {
-                  "StartAt": "TasksDeadlineNotificationSubscription",
-                  "States": {
-                    "TasksDeadlineNotificationSubscription": {
-                      "Type": "Task",
-                      "Resource": "${SNSTopicSubscriptionFunction.Arn}",
-                      "Parameters": {
-                        "topicArn": "${TasksDeadlineNotificationTopic}",
-                        "email.$": "$.email"
-                      },
-                      "End": true
-                    }
-                  }
-                },
-                 {
-                  "StartAt": "ClosedTasksNotificationSubscription",
-                  "States": {
-                    "ClosedTasksNotificationSubscription": {
-                      "Type": "Task",
-                      "Resource": "${SNSTopicSubscriptionFunction.Arn}",
-                      "Parameters": {
-                        "topicArn": "${ClosedTasksNotificationTopic}",
-                        "email.$": "$.email"
-                      },
-                      "End": true
-                    }
-                  }
-                },
-                {
-                  "StartAt": "ReopenedTasksNotificationSubscription",
-                  "States": {
-                    "ReopenedTasksNotificationSubscription": {
-                      "Type": "Task",
-                      "Resource": "${SNSTopicSubscriptionFunction.Arn}",
-                      "Parameters": {
-                        "topicArn": "${ReopenedTasksNotificationTopic}",
-                        "email.$": "$.email"
-                      },
-                      "End": true
-                    }
+        "Comment": "SNS subscription and task deadline update state machine",
+        "StartAt": "StateMachineDecision",
+        "States": {
+          "StateMachineDecision": {
+            "Type": "Choice",
+            "Choices": [
+              {
+                "Variable": "$.workflowType",
+                "StringEquals": "post-confirmation-sns",
+                "Next": "ProcessSNSSubscription"
+              },
+              {
+                "Variable": "$.workflowType",
+                "StringEquals": "task-deadline-hit",
+                "Next": "ProcessTaskDeadlineUpdate"
+              }
+            ],
+            "Default": "InvalidState"
+          },
+          "InvalidState": {
+            "Type": "Succeed",
+            "Comment": "Invalid State, no further action taken"
+          },
+          "ProcessSNSSubscription": {
+            "Type": "Parallel",
+            "Branches": [
+              {
+                "StartAt": "TasksAssignmentNotificationSubscription",
+                "States": {
+                  "TasksAssignmentNotificationSubscription": {
+                    "Type": "Task",
+                    "Resource": "${SNSTopicSubscriptionFunction.Arn}",
+                    "Parameters": {
+                      "topicArn": "${TasksAssignmentNotificationTopic}",
+                      "email.$": "$.email"
+                    },
+                    "End": true
                   }
                 }
-              ],
-              "Next": "Complete"
-            },
-            "Complete": {
-              "Type": "Succeed"
-            }
+              },
+              {
+                "StartAt": "TasksDeadlineNotificationSubscription",
+                "States": {
+                  "TasksDeadlineNotificationSubscription": {
+                    "Type": "Task",
+                    "Resource": "${SNSTopicSubscriptionFunction.Arn}",
+                    "Parameters": {
+                      "topicArn": "${TasksDeadlineNotificationTopic}",
+                      "email.$": "$.email"
+                    },
+                    "End": true
+                  }
+                }
+              },
+              {
+                "StartAt": "ClosedTasksNotificationSubscription",
+                "States": {
+                  "ClosedTasksNotificationSubscription": {
+                    "Type": "Task",
+                    "Resource": "${SNSTopicSubscriptionFunction.Arn}",
+                    "Parameters": {
+                      "topicArn": "${ClosedTasksNotificationTopic}",
+                      "email.$": "$.email"
+                    },
+                    "End": true
+                  }
+                }
+              },
+              {
+                "StartAt": "ReopenedTasksNotificationSubscription",
+                "States": {
+                  "ReopenedTasksNotificationSubscription": {
+                    "Type": "Task",
+                    "Resource": "${SNSTopicSubscriptionFunction.Arn}",
+                    "Parameters": {
+                      "topicArn": "${ReopenedTasksNotificationTopic}",
+                      "email.$": "$.email"
+                    },
+                    "End": true
+                  }
+                }
+              }
+            ],
+            "Next": "Complete"
+          },
+          "ProcessTaskDeadlineUpdate":{
+            "Type": "Parallel",
+            "Branches": [
+              {
+                "StartAt": "UpdateTaskStatusToExpired",
+                "States": {
+                  "UpdateTaskStatusToExpired": {
+                    "Type": "Task",
+                    "Resource": "${TaskStatusUpdateFunction.Arn}",
+                    "Parameters": {
+                      "taskId.$": "$.taskId"
+                    },
+                    "End": true
+                  }
+                }
+              },
+              {
+                "StartAt": "PublishMessageToClosedTasksNotificationTopic",
+                "States": {
+                  "PublishMessageToClosedTasksNotificationTopic": {
+                    "Type": "Task",
+                    "Resource": "${SendTaskDeadlineNotificationFunction.Arn}",
+                    "Parameters": {
+                      "taskId.$": "$.taskId",
+                      "taskName.$": "$.taskName",
+                      "taskDescription.$": "$.taskDescription",
+                      "receiver.$": "$.receiver",
+                      "taskDeadline.$": "$.taskDeadline",
+                      "topicArn.$": "$.topicArn",
+                    },
+                    "End": true
+                  }
+                }
+              }
+            ]
+          },
+          "Complete": {
+            "Type": "Succeed"
           }
         }
+    }
 
   TasksTable: # Creates the DynamoDB table for user tasks
     Type: AWS::DynamoDB::Table
@@ -298,6 +354,8 @@ Resources:
         - AttributeName: "taskId"
           AttributeType: "S"
         - AttributeName: "responsibility"
+          AttributeType: "S"
+        - AttributeName: "deadline"
           AttributeType: "S"
         - AttributeName: "status"
           AttributeType: "S"
@@ -420,6 +478,37 @@ Resources:
             ScheduleExpression: 'rate(3 minute)'
             Name: TaskDeadlineChecker
             Description: "Help checks the dynamoDB table(tasks) if a task is approaching deadline"
+
+  TaskStatusUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.TaskStatusUpdateLambdaHandler::handleRequest
+      CodeUri: .
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - dynamodb:UpdateItem
+            Resource: !GetAtt TasksTable.Arn
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref TasksQueue
+
+  SendTaskDeadlineNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.SendTaskDeadlineNotificationLambdaHandler::handleRequest
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - sns:Publish
+            Resource: !Ref ClosedTasksNotificationTopic
+    Environment:
+      Variables:
+        TASKS_CLOSED_NOTIFICATION_TOPIC_ARN: !Ref ClosedTasksNotificationTopic
 
 Outputs:
   TaskManagementSystemApi:

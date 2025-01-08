@@ -37,6 +37,7 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
 
             String taskId = message.getMessageAttributes().get("taskId").getStringValue();
             String receiver = message.getMessageAttributes().get("receiver").getStringValue();
+            String assignedBy = message.getMessageAttributes().get("assignedBy").getStringValue();
             String name = message.getMessageAttributes().get("name").getStringValue();
             String description = message.getMessageAttributes().get("description").getStringValue();
             String deadline = message.getMessageAttributes().get("deadline").getStringValue();
@@ -44,18 +45,18 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
 
             if ("task-creation".equals(messageReason)) {
                 System.out.println("Sending task creation notification");
-                sendTaskNotification(receiver, name, description, deadline,
+                sendTaskNotification(receiver, assignedBy, name, description, deadline,
                         topicArn, "New Task Assignment");
             } else if ("task-hit-deadline".equals(messageReason)) {
                 System.out.println("Sending task deadline notification");
                 try {
-                    triggerStepFunction(taskId, topicArn, name, description, receiver, deadline);
+                    triggerStepFunction(taskId, topicArn, name, description, receiver, deadline, assignedBy);
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }
             } else if ("task-approach-deadline".equals(messageReason)) {
                 System.out.println("Sending task approach deadline notification");
-                sendTaskNotification(receiver, name, description, deadline,
+                sendTaskNotification(receiver, assignedBy, name, description, deadline,
                         topicArn, "Task Approach Deadline");
             } else {
                 context.getLogger().log("Invalid message reason");
@@ -64,7 +65,7 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
         return "Processed message successfully!";
     }
 
-    private void sendTaskNotification(String receiver, String name, String description,
+    private void sendTaskNotification(String receiver, String assignedBy, String name, String description,
                                       String deadline, String topicArn, String title
     ) {
         // Create message attributes sns filtering
@@ -74,7 +75,7 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
                 .stringValue(receiver)
                 .build());
 
-        String messageContent = String.format("Name: %s\nDescription: %s\nDeadline: %s", name, description, deadline);
+        String messageContent = String.format("Name: %s\nDescription: %s\nDeadline: %s\nAssigned by: %s", name, description, deadline, assignedBy);
 
         PublishRequest publishRequest = PublishRequest.builder()
                 .topicArn(topicArn)
@@ -93,13 +94,14 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
     }
 
     private void triggerStepFunction(String taskId, String topicArn, String name, String description,
-                                     String receiver, String deadline ) throws JsonProcessingException {
+                                     String receiver, String deadline, String assignedBy) throws JsonProcessingException {
         Map<String, String> jsonMap = new HashMap<>();
         jsonMap.put("taskId", taskId);
         jsonMap.put("workflowType", "task-deadline-hit");
         jsonMap.put("taskName", name);
         jsonMap.put("taskDescription", description);
         jsonMap.put("receiver", receiver);
+        jsonMap.put("assignedBy", assignedBy);
         jsonMap.put("topicArn", topicArn);
         jsonMap.put("taskDeadline", deadline);
 

@@ -54,6 +54,11 @@ public class SQSDynamodbStreamLambdaSendMessageHandler implements RequestHandler
                         .stringValue(newImage.get("responsibility").getS())
                         .build());
 
+                messageAttributes.put("assignedBy", MessageAttributeValue.builder()
+                        .dataType("String")
+                        .stringValue(newImage.get("assignedBy").getS())
+                        .build());
+
                 messageAttributes.put("deadline", MessageAttributeValue.builder()
                         .dataType("String")
                         .stringValue(newImage.get("deadline").getS())

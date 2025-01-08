@@ -40,14 +40,16 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         item.put("taskId", AttributeValue.builder().s(UUID.randomUUID().toString()).build());
         item.put("name", AttributeValue.builder().s(request.name()).build());
         item.put("description", AttributeValue.builder().s(request.description()).build());
-        item.put("status", AttributeValue.builder().s(request.status().getName()).build());
+        item.put("status", AttributeValue.builder().s(TaskStatus.OPEN.getName()).build());
         item.put("responsibility", AttributeValue.builder().s(request.responsibility()).build());
         item.put("deadline", AttributeValue.builder().s(request.deadline().toString()).build());
+        item.put("assignedBy", AttributeValue.builder().s(request.assignedBy()).build());
 
 
         PutItemRequest putRequest = PutItemRequest.builder()
                 .tableName(tasksTableName)
                 .item(item)
+                .returnValues("ALL_NEW")
                 .build();
 
         PutItemResponse putItemResponse = dynamoDbClient.putItem(putRequest);

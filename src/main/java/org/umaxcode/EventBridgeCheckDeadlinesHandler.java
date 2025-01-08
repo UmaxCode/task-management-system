@@ -143,6 +143,11 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
                     .stringValue(item.get("responsibility").s())
                     .build());
 
+            messageAttributes.put("assignedBy", MessageAttributeValue.builder()
+                    .dataType("String")
+                    .stringValue(item.get("assignedBy").s())
+                    .build());
+
             messageAttributes.put("deadline", MessageAttributeValue.builder()
                     .dataType("String")
                     .stringValue(item.get("deadline").s())

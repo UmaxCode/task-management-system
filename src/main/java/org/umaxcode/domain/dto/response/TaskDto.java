@@ -16,4 +16,5 @@ public class TaskDto {
     String deadline;
     String responsibility;
     String comment;
+    String assignedBy;
 }

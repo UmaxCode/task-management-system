@@ -24,6 +24,7 @@ public class TaskMapper {
                 .deadline(item.get("deadline").s())
                 .responsibility(item.get("responsibility").s())
                 .comment(comment != null ? comment.s() : null)
+                .assignedBy(item.get("assignedBy").s())
                 .build();
     }
 

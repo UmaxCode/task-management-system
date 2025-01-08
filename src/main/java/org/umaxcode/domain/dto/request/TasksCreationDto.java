@@ -6,7 +6,6 @@ public record TasksCreationDto(
         String name,
         String description,
         LocalDateTime deadline,
-        String responsibility,
-        String assignedBy
+        String responsibility
 ) {
 }

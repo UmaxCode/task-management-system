@@ -1,10 +1,9 @@
 package org.umaxcode.service.impl;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
-import org.umaxcode.domain.dto.request.TaskCommentUpdateDto;
-import org.umaxcode.domain.dto.request.TaskStatusUpdateDto;
-import org.umaxcode.domain.dto.request.TasksCreationDto;
+import org.umaxcode.domain.dto.request.*;
 import org.umaxcode.domain.dto.response.TaskDto;
 import org.umaxcode.domain.enums.TaskStatus;
 import org.umaxcode.exception.TaskManagementException;
@@ -14,6 +13,7 @@ import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityPr
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +34,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     @Override
-    public void createItem(TasksCreationDto request) {
+    public void createItem(TasksCreationDto request, String email) {
 
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("taskId", AttributeValue.builder().s(UUID.randomUUID().toString()).build());
@@ -43,13 +43,12 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         item.put("status", AttributeValue.builder().s(TaskStatus.OPEN.getName()).build());
         item.put("responsibility", AttributeValue.builder().s(request.responsibility()).build());
         item.put("deadline", AttributeValue.builder().s(request.deadline().toString()).build());
-        item.put("assignedBy", AttributeValue.builder().s(request.assignedBy()).build());
+        item.put("assignedBy", AttributeValue.builder().s(email).build());
 
 
         PutItemRequest putRequest = PutItemRequest.builder()
                 .tableName(tasksTableName)
                 .item(item)
-                .returnValues("ALL_NEW")
                 .build();
 
         PutItemResponse putItemResponse = dynamoDbClient.putItem(putRequest);
@@ -112,31 +111,153 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     @Override
-    public TaskDto updateTaskStatus(String id, TaskStatusUpdateDto request) {
+    public TaskDto makeTaskAsCompleted(String id, Jwt jwt) {
 
-        // Define the primary key
+        List<String> groups = jwt.getClaimAsStringList("cognito:groups");
+        boolean isAdmin = groups != null && groups.contains("apiAdmins");
+
+        if (isAdmin) {
+            throw new TaskManagementException("Admin is not allowed to mark a task as completed");
+        }
+
+        try {
+            // Define the primary key
+            Map<String, AttributeValue> key = Map.of(
+                    "taskId", AttributeValue.builder().s(id).build()
+            );
+
+            // Create the UpdateItemRequest
+            UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
+                    .tableName(tasksTableName)
+                    .key(key)
+                    .updateExpression("SET #status = :status")
+                    .conditionExpression("#status = :open")
+                    .expressionAttributeValues(Map.of(
+                            ":status", AttributeValue.builder().s("completed").build(),
+                            ":open", AttributeValue.builder().s("open").build()
+                    ))
+                    .expressionAttributeNames(Map.of(
+                            "#status", "status"
+                    ))
+                    .returnValues("ALL_NEW")
+                    .build();
+
+            // Execute the update
+            UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
+
+            return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
+        } catch (ConditionalCheckFailedException ex) {
+            throw new TaskManagementException("Invalid task status update: [completed, expired] -> completed");
+        }
+    }
+
+    @Override
+    public TaskDto reAssignTask(String id, ReassignTaskDto request) {
+
+        try {
+            // Define the primary key
+            Map<String, AttributeValue> key = Map.of(
+                    "taskId", AttributeValue.builder().s(id).build()
+            );
+
+            // Create the UpdateItemRequest
+            UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
+                    .tableName(tasksTableName)
+                    .key(key)
+                    .updateExpression("SET responsibility = :responsibility")
+                    .conditionExpression("#status = :open")
+                    .expressionAttributeValues(Map.of(
+                            ":responsibility", AttributeValue.builder().s(request.userEmail()).build(),
+                            ":open", AttributeValue.builder().s("open").build()
+                    ))
+                    .expressionAttributeNames(Map.of(
+                            "#status", "status"
+                    ))
+                    .returnValues("ALL_NEW")
+                    .build();
+
+            // Execute the update
+            UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
+
+            return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
+        } catch (ConditionalCheckFailedException ex) {
+            throw new TaskManagementException("Invalid task status [expired, completed] during reassignment");
+        }
+    }
+
+    @Override
+    public TaskDto reopenTask(String id, TaskReopenDto request) {
+
+        try {
+            // Define the primary key
+            Map<String, AttributeValue> key = Map.of(
+                    "taskId", AttributeValue.builder().s(id).build()
+            );
+
+            // Calculate the current time + 1 hour in seconds since the epoch
+            long currentTimeInSeconds = Instant.now().getEpochSecond();
+            long minimumDeadline = currentTimeInSeconds + 3600;
+
+            // Create the UpdateItemRequest
+            UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
+                    .tableName(tasksTableName)
+                    .key(key)
+                    .updateExpression("SET #status = :status, deadline = :deadline")
+                    .conditionExpression("#status = :expired AND deadline >= :minimumDeadline")
+                    .expressionAttributeValues(Map.of(
+                            ":status", AttributeValue.builder().s("open").build(),
+                            ":deadline", AttributeValue.builder().s(request.deadline().toString()).build(),
+                            ":expired", AttributeValue.builder().s("expired").build(),
+                            ":minimumDeadline", AttributeValue.builder().n(String.valueOf(minimumDeadline)).build()
+                    ))
+                    .expressionAttributeNames(Map.of(
+                            "#status", "status"
+                    ))
+                    .returnValues("ALL_NEW")
+                    .build();
+
+            // Execute the update
+            UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
+
+            return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
+        } catch (ConditionalCheckFailedException ex) {
+            throw new TaskManagementException("Invalid task status update: [open, completed] -> open" +
+                    " or or the deadline is less than 1 hour in the future.");
+        }
+    }
+
+    @Override
+    public TaskDto updateTaskDetails(String id, TaskDetailsUpdateDto request) {
+
         Map<String, AttributeValue> key = Map.of(
                 "taskId", AttributeValue.builder().s(id).build()
         );
 
-        // Create the UpdateItemRequest
-        UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
-                .tableName(tasksTableName)
-                .key(key)
-                .updateExpression("SET #status = :status")
-                .expressionAttributeValues(Map.of(
-                        ":status", AttributeValue.builder().s(request.status().name()).build()
-                ))
-                .expressionAttributeNames(Map.of(
-                        "#status", "status"
-                ))
-                .returnValues("ALL_NEW")
-                .build();
+        try {
+            UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
+                    .tableName(tasksTableName)
+                    .key(key)
+                    .updateExpression("SET #name = :name, description = :description")
+                    .conditionExpression("#status = :open")
+                    .expressionAttributeValues(Map.of(
+                            ":status", AttributeValue.builder().s("open").build(),
+                            ":name", AttributeValue.builder().s(request.name()).build(),
+                            ":description", AttributeValue.builder().s(request.description()).build()
+                    ))
+                    .expressionAttributeNames(Map.of(
+                            "#status", "status",
+                            "#name", "name"
+                    ))
+                    .returnValues("ALL_NEW")
+                    .build();
 
-        // Execute the update
-        UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
+            // Execute the update
+            UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
 
-        return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
+            return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
+        } catch (ConditionalCheckFailedException ex) {
+            throw new TaskManagementException("Only open tasks can be updated");
+        }
     }
 
     @Override

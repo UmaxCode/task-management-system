@@ -3,10 +3,10 @@ package org.umaxcode.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import org.umaxcode.domain.dto.request.TaskCommentUpdateDto;
-import org.umaxcode.domain.dto.request.TaskStatusUpdateDto;
-import org.umaxcode.domain.dto.request.TasksCreationDto;
+import org.umaxcode.domain.dto.request.*;
 import org.umaxcode.domain.dto.response.SuccessResponse;
 import org.umaxcode.domain.dto.response.TaskDto;
 import org.umaxcode.service.TaskManagementService;
@@ -23,9 +23,10 @@ public class TaskManagementController {
     @PostMapping
     @PreAuthorize(value = "hasRole('apiAdmins')")
     @ResponseStatus(HttpStatus.CREATED)
-    public SuccessResponse createTask(@RequestBody TasksCreationDto request) {
+    public SuccessResponse createTask(@RequestBody TasksCreationDto request, @AuthenticationPrincipal Jwt jwt) {
 
-        taskManagementService.createItem(request);
+        String adminEmail = jwt.getClaimAsString("email");
+        taskManagementService.createItem(request, adminEmail);
         return SuccessResponse.builder()
                 .message("Task created successfully")
                 .build();
@@ -54,13 +55,23 @@ public class TaskManagementController {
                 .build();
     }
 
-    @PatchMapping("/{id}/status")
+    @PatchMapping("/{id}/completed")
     @ResponseStatus(HttpStatus.OK)
-    public SuccessResponse updateTaskStatus(@PathVariable("id") String id,
-                                            @RequestBody TaskStatusUpdateDto request
-    ) {
+    public SuccessResponse makeTaskAsCompleted(@PathVariable("id") String id, @AuthenticationPrincipal Jwt jwt) {
 
-        TaskDto updatedTask = taskManagementService.updateTaskStatus(id, request);
+        TaskDto updatedTask = taskManagementService.makeTaskAsCompleted(id, jwt);
+        return SuccessResponse.builder()
+                .message("Task status updated successfully")
+                .data(updatedTask)
+                .build();
+    }
+
+    @PatchMapping("/{id}/reopen")
+    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse reopenTask(@PathVariable("id") String id, @RequestBody TaskReopenDto request) {
+
+        TaskDto updatedTask = taskManagementService.reopenTask(id, request);
         return SuccessResponse.builder()
                 .message("Task status updated successfully")
                 .data(updatedTask)
@@ -74,6 +85,32 @@ public class TaskManagementController {
     ) {
 
         TaskDto updatedTask = taskManagementService.updateTaskComment(id, request);
+        return SuccessResponse.builder()
+                .message("Task comment updated successfully")
+                .data(updatedTask)
+                .build();
+    }
+
+    @PatchMapping("/{id}/reassign")
+    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse reAssignTask(@PathVariable("id") String id, @RequestBody ReassignTaskDto request
+    ) {
+
+        TaskDto updatedTask = taskManagementService.reAssignTask(id, request);
+        return SuccessResponse.builder()
+                .message("Task comment updated successfully")
+                .data(updatedTask)
+                .build();
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse updateTaskDetails(@PathVariable("id") String id, @RequestBody TaskDetailsUpdateDto request
+    ) {
+
+        TaskDto updatedTask = taskManagementService.updateTaskDetails(id, request);
         return SuccessResponse.builder()
                 .message("Task comment updated successfully")
                 .data(updatedTask)

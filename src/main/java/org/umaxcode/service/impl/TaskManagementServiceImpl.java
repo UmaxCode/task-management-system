@@ -2,6 +2,8 @@ package org.umaxcode.service.impl;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.umaxcode.domain.dto.request.TaskCommentUpdateDto;
+import org.umaxcode.domain.dto.request.TaskStatusUpdateDto;
 import org.umaxcode.domain.dto.request.TasksCreationDto;
 import org.umaxcode.domain.dto.response.TaskDto;
 import org.umaxcode.domain.enums.TaskStatus;
@@ -38,14 +40,16 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         item.put("taskId", AttributeValue.builder().s(UUID.randomUUID().toString()).build());
         item.put("name", AttributeValue.builder().s(request.name()).build());
         item.put("description", AttributeValue.builder().s(request.description()).build());
-        item.put("status", AttributeValue.builder().s(request.status().getName()).build());
+        item.put("status", AttributeValue.builder().s(TaskStatus.OPEN.getName()).build());
         item.put("responsibility", AttributeValue.builder().s(request.responsibility()).build());
         item.put("deadline", AttributeValue.builder().s(request.deadline().toString()).build());
+        item.put("assignedBy", AttributeValue.builder().s(request.assignedBy()).build());
 
 
         PutItemRequest putRequest = PutItemRequest.builder()
                 .tableName(tasksTableName)
                 .item(item)
+                .returnValues("ALL_NEW")
                 .build();
 
         PutItemResponse putItemResponse = dynamoDbClient.putItem(putRequest);
@@ -105,5 +109,61 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         ScanResponse scanResponse = dynamoDbClient.scan(scanRequest);
 
         return TaskMapper.mapToListTaskDto(scanResponse.items());
+    }
+
+    @Override
+    public TaskDto updateTaskStatus(String id, TaskStatusUpdateDto request) {
+
+        // Define the primary key
+        Map<String, AttributeValue> key = Map.of(
+                "taskId", AttributeValue.builder().s(id).build()
+        );
+
+        // Create the UpdateItemRequest
+        UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
+                .tableName(tasksTableName)
+                .key(key)
+                .updateExpression("SET #status = :status")
+                .expressionAttributeValues(Map.of(
+                        ":status", AttributeValue.builder().s(request.status().name()).build()
+                ))
+                .expressionAttributeNames(Map.of(
+                        "#status", "status"
+                ))
+                .returnValues("ALL_NEW")
+                .build();
+
+        // Execute the update
+        UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
+
+        return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
+    }
+
+    @Override
+    public TaskDto updateTaskComment(String id, TaskCommentUpdateDto request) {
+
+        // Define the primary key
+        Map<String, AttributeValue> key = Map.of(
+                "taskId", AttributeValue.builder().s(id).build()
+        );
+
+        // Create the UpdateItemRequest
+        UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
+                .tableName(tasksTableName)
+                .key(key)
+                .updateExpression("SET #comment = :comment")
+                .expressionAttributeValues(Map.of(
+                        ":comment", AttributeValue.builder().s(request.comment()).build()
+                ))
+                .expressionAttributeNames(Map.of(
+                        "#comment", "comment"
+                ))
+                .returnValues("ALL_NEW")
+                .build();
+
+        // Execute the update
+        UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
+
+        return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
     }
 }

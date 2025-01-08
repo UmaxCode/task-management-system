@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.umaxcode.domain.dto.request.TaskCommentUpdateDto;
+import org.umaxcode.domain.dto.request.TaskStatusUpdateDto;
 import org.umaxcode.domain.dto.request.TasksCreationDto;
 import org.umaxcode.domain.dto.response.SuccessResponse;
 import org.umaxcode.domain.dto.response.TaskDto;
@@ -49,6 +51,32 @@ public class TaskManagementController {
         return SuccessResponse.builder()
                 .message("Tasks retrieved successfully")
                 .data(usersTasks)
+                .build();
+    }
+
+    @PatchMapping("/{id}/status")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse updateTaskStatus(@PathVariable("id") String id,
+                                            @RequestBody TaskStatusUpdateDto request
+    ) {
+
+        TaskDto updatedTask = taskManagementService.updateTaskStatus(id, request);
+        return SuccessResponse.builder()
+                .message("Task status updated successfully")
+                .data(updatedTask)
+                .build();
+    }
+
+    @PatchMapping("/{id}/comment")
+    @ResponseStatus(HttpStatus.OK)
+    public SuccessResponse updateTaskComment(@PathVariable("id") String id,
+                                             @RequestBody TaskCommentUpdateDto request
+    ) {
+
+        TaskDto updatedTask = taskManagementService.updateTaskComment(id, request);
+        return SuccessResponse.builder()
+                .message("Task comment updated successfully")
+                .data(updatedTask)
                 .build();
     }
 

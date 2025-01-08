@@ -12,11 +12,11 @@ import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SQSLambdaSendMessageHandler implements RequestHandler<DynamodbEvent, String> {
+public class SQSDynamodbStreamLambdaSendMessageHandler implements RequestHandler<DynamodbEvent, String> {
 
     private final SqsClient sqsClient;
 
-    public SQSLambdaSendMessageHandler() {
+    public SQSDynamodbStreamLambdaSendMessageHandler() {
         sqsClient = SqsClient.create();
     }
 
@@ -34,6 +34,11 @@ public class SQSLambdaSendMessageHandler implements RequestHandler<DynamodbEvent
                 // Add attributes to the message
                 Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
 
+                messageAttributes.put("taskId", MessageAttributeValue.builder()
+                        .dataType("String")
+                        .stringValue(newImage.get("taskId").getS())
+                        .build());
+
                 messageAttributes.put("name", MessageAttributeValue.builder()
                         .dataType("String")
                         .stringValue(newImage.get("name").getS())
@@ -47,6 +52,11 @@ public class SQSLambdaSendMessageHandler implements RequestHandler<DynamodbEvent
                 messageAttributes.put("receiver", MessageAttributeValue.builder()
                         .dataType("String")
                         .stringValue(newImage.get("responsibility").getS())
+                        .build());
+
+                messageAttributes.put("assignedBy", MessageAttributeValue.builder()
+                        .dataType("String")
+                        .stringValue(newImage.get("assignedBy").getS())
                         .build());
 
                 messageAttributes.put("deadline", MessageAttributeValue.builder()

@@ -185,10 +185,10 @@ Resources:
             Action:
               - states:StartExecution
             Resource:
-              - !GetAtt StepFunctionsStateMachineSNSSub.Arn
+              - !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Environment:
         Variables:
-          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSub.Arn
+          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
 
   SNSSubStateMachineRole:
     Type: AWS::IAM::Role
@@ -210,18 +210,41 @@ Resources:
               - Effect: Allow
                 Action:
                   - lambda:InvokeFunction
-                Resource: !GetAtt SNSTopicSubscriptionFunction.Arn
+                Resource:
+                  - !GetAtt SNSTopicSubscriptionFunction.Arn
+                  - !GetAtt TaskStatusUpdateFunction.Arn
+                  - !GetAtt SendTaskDeadlineNotificationFunction.Arn
 
-  StepFunctionsStateMachineSNSSub:
+  StepFunctionsStateMachineSNSSubAndTaskDeadlineNot:
     Type: AWS::StepFunctions::StateMachine
     Properties:
       RoleArn: !GetAtt SNSSubStateMachineRole.Arn
       DefinitionString:
         !Sub |
         {
-          "Comment": "SNS subscription state machine",
-          "StartAt": "ProcessSNSSubscription",
+          "Comment": "SNS subscription and task deadline update state machine",
+          "StartAt": "StateMachineDecision",
           "States": {
+            "StateMachineDecision": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.workflowType",
+                  "StringEquals": "post-confirmation-sns",
+                  "Next": "ProcessSNSSubscription"
+                },
+                {
+                  "Variable": "$.workflowType",
+                  "StringEquals": "task-deadline-hit",
+                  "Next": "ProcessTaskDeadlineUpdate"
+                }
+              ],
+              "Default": "InvalidState"
+            },
+            "InvalidState": {
+              "Type": "Succeed",
+              "Comment": "Invalid State, no further action taken"
+            },
             "ProcessSNSSubscription": {
               "Type": "Parallel",
               "Branches": [
@@ -253,7 +276,7 @@ Resources:
                     }
                   }
                 },
-                 {
+                {
                   "StartAt": "ClosedTasksNotificationSubscription",
                   "States": {
                     "ClosedTasksNotificationSubscription": {
@@ -284,6 +307,44 @@ Resources:
               ],
               "Next": "Complete"
             },
+            "ProcessTaskDeadlineUpdate": {
+              "Type": "Parallel",
+              "Branches": [
+                {
+                  "StartAt": "UpdateTaskStatusToExpired",
+                  "States": {
+                    "UpdateTaskStatusToExpired": {
+                      "Type": "Task",
+                      "Resource": "${TaskStatusUpdateFunction.Arn}",
+                      "Parameters": {
+                        "taskId.$": "$.taskId"
+                      },
+                      "End": true
+                    }
+                  }
+                },
+                {
+                  "StartAt": "PublishMessageToClosedTasksNotificationTopic",
+                  "States": {
+                    "PublishMessageToClosedTasksNotificationTopic": {
+                      "Type": "Task",
+                      "Resource": "${SendTaskDeadlineNotificationFunction.Arn}",
+                      "Parameters": {
+                        "taskId.$": "$.taskId",
+                        "taskName.$": "$.taskName",
+                        "taskDescription.$": "$.taskDescription",
+                        "receiver.$": "$.receiver",
+                        "assignedBy.$": "$.assignedBy",
+                        "taskDeadline.$": "$.taskDeadline",
+                        "topicArn.$": "$.topicArn"
+                      },
+                      "End": true
+                    }
+                  }
+                }
+              ],
+              "Next": "Complete"
+            },
             "Complete": {
               "Type": "Succeed"
             }
@@ -299,6 +360,12 @@ Resources:
           AttributeType: "S"
         - AttributeName: "responsibility"
           AttributeType: "S"
+        - AttributeName: "deadline"
+          AttributeType: "S"
+        - AttributeName: "status"
+          AttributeType: "S"
+        - AttributeName: "isNotified"
+          AttributeType: "S"
       KeySchema:
         - AttributeName: "taskId"
           KeyType: "HASH"
@@ -309,14 +376,32 @@ Resources:
               KeyType: "HASH"
           Projection:
             ProjectionType: ALL
+        - IndexName: "deadlineIndex"  # Name of the GSI
+          KeySchema:
+            - AttributeName: "deadline"  # Partition key for the GSI
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+        - IndexName: "statusIndex"  # Name of the GSI
+          KeySchema:
+            - AttributeName: "status"  # Partition key for the GSI
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+        - IndexName: "isNotifiedIndex"  # Name of the GSI
+          KeySchema:
+            - AttributeName: "isNotified"  # Partition key for the GSI
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
       StreamSpecification:
         StreamViewType: NEW_IMAGE  # Capture the new item after each write
 
-  SQSLambdaSendMessageFunction:
+  SQSDynamodbStreamLambdaSendMessageHandler:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: org.umaxcode.SQSLambdaSendMessageHandler::handleRequest
+      Handler: org.umaxcode.SQSDynamodbStreamLambdaSendMessageHandler::handleRequest
       CodeUri: .
       Policies:
         - SQSSendMessagePolicy: # Predefined policy to send messages
@@ -348,13 +433,23 @@ Resources:
               - sqs:ReceiveMessage
               - sqs:DeleteMessage
               - sqs:GetQueueAttributes
-              - sns:Publish
             Resource:
               - !GetAtt TasksQueue.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sns:Publish
+            Resource:
               - !Ref TasksAssignmentNotificationTopic
+        - Statement:
+            Effect: Allow
+            Action:
+              - states:StartExecution
+            Resource:
+              - !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Environment:
         Variables:
-          QUEUE_URL: !Ref TasksQueue
+          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Events:
         SQSTrigger:
           Type: SQS
@@ -385,6 +480,62 @@ Resources:
               - sqs:DeleteMessage
               - sqs:GetQueueAttributes
             Resource: !GetAtt TasksQueue.Arn
+
+  CheckTasksDeadlinesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.EventBridgeCheckDeadlinesHandler::handleRequest
+      CodeUri: .
+      Policies:
+        - SQSSendMessagePolicy: # Predefined policy to send messages
+            QueueName: tasks-queue
+        - DynamoDBReadPolicy:
+            TableName: !Ref TasksTable
+      Environment:
+        Variables:
+          QUEUE_URL: !Ref TasksQueue
+          TASKS_TABLE_NAME: !Ref TasksTable
+          TASKS_DEADLINE_NOTIFICATION_TOPIC_ARN: !Ref TasksDeadlineNotificationTopic
+          TASKS_CLOSED_NOTIFICATION_TOPIC_ARN: !Ref ClosedTasksNotificationTopic
+      Events:
+        CWSchedule:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: 'rate(3 minute)'
+            Name: TaskDeadlineChecker
+            Description: "Help checks the dynamoDB table(tasks) if a task is approaching deadline"
+
+  TaskStatusUpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.TaskStatusUpdateLambdaHandler::handleRequest
+      CodeUri: .
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - dynamodb:UpdateItem
+            Resource: !GetAtt TasksTable.Arn
+      Environment:
+        Variables:
+          TASKS_TABLE_NAME: !Ref TasksTable
+          QUEUE_URL: !Ref TasksQueue
+
+  SendTaskDeadlineNotificationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.SendTaskDeadlineNotificationLambdaHandler::handleRequest
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - sns:Publish
+            Resource: !Ref ClosedTasksNotificationTopic
+    Environment:
+      Variables:
+        TASKS_CLOSED_NOTIFICATION_TOPIC_ARN: !Ref ClosedTasksNotificationTopic
 
 Outputs:
   TaskManagementSystemApi:

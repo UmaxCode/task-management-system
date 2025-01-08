@@ -4,13 +4,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.umaxcode.domain.dto.request.UserCreationDto;
+import org.umaxcode.domain.dto.response.UserDto;
 import org.umaxcode.exception.UserAuthException;
+import org.umaxcode.mapper.UserMapper;
 import org.umaxcode.service.UserAuthService;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.InvokeRequest;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -64,5 +68,32 @@ public class UserAuthServiceImpl implements UserAuthService {
         } catch (Exception e) {
             System.err.println("Error invoking post-confirmation Lambda: " + e.getMessage());
         }
+    }
+
+    @Override
+    public List<UserDto> fetchAllUsers() {
+
+        ListUsersRequest listUsersRequest = ListUsersRequest.builder()
+                .userPoolId(userPoolId)
+                .build();
+
+        ListUsersResponse response = cognitoClient.listUsers(listUsersRequest);
+
+        // Handle pagination if needed
+        List<UserType> allUsers = response.users();
+        String paginationToken = response.paginationToken();
+
+        while (paginationToken != null) {
+            response = cognitoClient.listUsers(
+                    ListUsersRequest.builder()
+                            .userPoolId(userPoolId)
+                            .paginationToken(paginationToken)
+                            .build()
+            );
+            allUsers.addAll(response.users());
+            paginationToken = response.paginationToken();
+        }
+
+        return UserMapper.toUserDto(allUsers);
     }
 }

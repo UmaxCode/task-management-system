@@ -334,7 +334,7 @@ Resources:
                         "taskName.$": "$.taskName",
                         "taskDescription.$": "$.taskDescription",
                         "receiver.$": "$.receiver",
-                        "assignedBy.$": "$.assignedBy"
+                        "assignedBy.$": "$.assignedBy",
                         "taskDeadline.$": "$.taskDeadline",
                         "topicArn.$": "$.topicArn"
                       },

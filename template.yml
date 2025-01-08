@@ -155,6 +155,12 @@ Resources:
       TopicName: reopened-tasks-notifications
       DisplayName: "Reopened Tasks Notifications"
 
+  TaskCompleteNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: task-complete-notifications
+      DisplayName: "task completion Notifications"
+
   SNSTopicSubscriptionFunction:
     Type: AWS::Serverless::Function
     Properties:

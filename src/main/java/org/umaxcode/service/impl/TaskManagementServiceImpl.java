@@ -44,6 +44,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         item.put("responsibility", AttributeValue.builder().s(request.responsibility()).build());
         item.put("deadline", AttributeValue.builder().s(request.deadline().toString()).build());
         item.put("assignedBy", AttributeValue.builder().s(email).build());
+        item.put("isNotifiedForApproachDeadline", AttributeValue.builder().bool(false).build());
 
 
         PutItemRequest putRequest = PutItemRequest.builder()

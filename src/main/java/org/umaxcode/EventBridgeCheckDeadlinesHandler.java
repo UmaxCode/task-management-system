@@ -94,7 +94,7 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
                 .tableName(tasksTableName)
                 .indexName("statusIndex") // GSI on `deadline`
                 .keyConditionExpression("#status = :open")
-                .filterExpression("deadline BETWEEN :current AND :oneHourLater AND isNotified = :false")
+                .filterExpression("deadline BETWEEN :current AND :oneHourLater AND isNotifiedForApproachDeadline = :false")
                 .expressionAttributeValues(Map.of(
                         ":current", AttributeValue.builder().s(currentTime.toString()).build(),
                         ":oneHourLater", AttributeValue.builder().s(oneHourFromNow.toString()).build(),
@@ -107,7 +107,7 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
 
         QueryResponse queryResponse = dynamoDbClient.query(queryRequest);
 
-        System.out.println("Info: checkTasksDeadlineDueAndWriteToSQS");
+        System.out.println("Info: checkTasksApproachDeadlineAndWriteToSQS");
 
 
         if (queryResponse.hasItems()) {
@@ -179,14 +179,14 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
                     UpdateItemRequest updateRequest = UpdateItemRequest.builder()
                             .tableName(tasksTableName)
                             .key(Map.of("taskId", AttributeValue.builder().s(taskId).build()))
-                            .updateExpression("SET isNotified = :true")
+                            .updateExpression("SET isNotifiedForApproachDeadline = :true")
                             .expressionAttributeValues(Map.of(
                                     ":true", AttributeValue.builder().bool(true).build()
                             ))
                             .build();
 
                     dynamoDbClient.updateItem(updateRequest);
-                    System.out.println("Successfully updated task with ID: " + taskId + " to set isNotified = true");
+                    System.out.println("Successfully updated task with ID: " + taskId + " to set isNotifiedForApproachDeadline = true");
                 } catch (Exception e) {
                     System.err.println("Failed to update task: " + e.getMessage());
                 }

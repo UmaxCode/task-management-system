@@ -5,9 +5,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.umaxcode.domain.dto.request.UserCreationDto;
 import org.umaxcode.domain.dto.response.UserDto;
+import org.umaxcode.domain.enums.Role;
 import org.umaxcode.exception.UserAuthException;
 import org.umaxcode.mapper.UserMapper;
 import org.umaxcode.service.UserAuthService;
+import org.umaxcode.utils.PasswordGenerator;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
@@ -35,11 +37,11 @@ public class UserAuthServiceImpl implements UserAuthService {
                     .username(request.email())
                     .userAttributes(
                             AttributeType.builder().name("email").value(request.email()).build(),
-//                            AttributeType.builder().name("custom:name").value(request.username()).build(),
-//                            AttributeType.builder().name("custom:role").value(Role.USER.toString()).build(),
+                            AttributeType.builder().name("name").value(request.username()).build(),
+                            AttributeType.builder().name("custom:role").value(Role.USER.toString()).build(),
                             AttributeType.builder().name("email_verified").value("true").build()
                     )
-                    .temporaryPassword("TemporaryPass@123") // Temporary password for first login
+                    .temporaryPassword(PasswordGenerator.generatePassword()) // Temporary password for first login
                     .desiredDeliveryMediums(DeliveryMediumType.EMAIL)
                     .build();
 

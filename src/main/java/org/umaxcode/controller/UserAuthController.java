@@ -1,6 +1,5 @@
 package org.umaxcode.controller;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,7 +19,7 @@ public class UserAuthController {
     private final UserAuthService userAuthService;
 
     @PostMapping("/signup")
-    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse signup(@RequestBody UserCreationDto request) {
 
@@ -31,7 +30,7 @@ public class UserAuthController {
     }
 
     @GetMapping
-    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse fetchAllUsers() {
 

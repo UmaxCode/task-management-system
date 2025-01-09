@@ -21,7 +21,7 @@ public class TaskManagementController {
     private final TaskManagementService taskManagementService;
 
     @PostMapping
-    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse createTask(@RequestBody TasksCreationDto request, @AuthenticationPrincipal Jwt jwt) {
 
@@ -33,7 +33,7 @@ public class TaskManagementController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse retrieveTask(@PathVariable("id") String taskId) {
 
@@ -45,6 +45,7 @@ public class TaskManagementController {
     }
 
     @GetMapping("/users/{email}")
+    @PreAuthorize(value= "hasAnyRole('ADMIN', 'USER')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse retrieveUserTasks(@PathVariable String email) {
 
@@ -56,6 +57,7 @@ public class TaskManagementController {
     }
 
     @PatchMapping("/{id}/completed")
+    @PreAuthorize(value = "hasRole('USER')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse makeTaskAsCompleted(@PathVariable("id") String id, @AuthenticationPrincipal Jwt jwt) {
 
@@ -67,7 +69,7 @@ public class TaskManagementController {
     }
 
     @PatchMapping("/{id}/reopen")
-    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse reopenTask(@PathVariable("id") String id, @RequestBody TaskReopenDto request) {
 
@@ -79,6 +81,7 @@ public class TaskManagementController {
     }
 
     @PatchMapping("/{id}/comment")
+    @PreAuthorize(value = "hasRole('USER')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse updateTaskComment(@PathVariable("id") String id,
                                              @RequestBody TaskCommentUpdateDto request
@@ -92,7 +95,7 @@ public class TaskManagementController {
     }
 
     @PatchMapping("/{id}/reassign")
-    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse reAssignTask(@PathVariable("id") String id, @RequestBody ReassignTaskDto request
     ) {
@@ -105,7 +108,7 @@ public class TaskManagementController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse updateTaskDetails(@PathVariable("id") String id, @RequestBody TaskDetailsUpdateDto request
     ) {
@@ -118,7 +121,7 @@ public class TaskManagementController {
     }
 
     @GetMapping
-    @PreAuthorize(value = "hasRole('apiAdmins')")
+    @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse retrieveAllTasks() {
 

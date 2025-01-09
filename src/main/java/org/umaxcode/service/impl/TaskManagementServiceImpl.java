@@ -113,12 +113,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     @Override
     public TaskDto makeTaskAsCompleted(String id, Jwt jwt) {
 
-        List<String> groups = jwt.getClaimAsStringList("cognito:groups");
-        boolean isAdmin = groups != null && groups.contains("apiAdmins");
-
-        if (isAdmin) {
-            throw new TaskManagementException("Admin is not allowed to mark a task as completed");
-        }
+        String email = jwt.getClaimAsString("email");
 
         try {
             // Define the primary key
@@ -131,10 +126,11 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                     .tableName(tasksTableName)
                     .key(key)
                     .updateExpression("SET #status = :status")
-                    .conditionExpression("#status = :open")
+                    .conditionExpression("#status = :open AND responsibility = :email")
                     .expressionAttributeValues(Map.of(
                             ":status", AttributeValue.builder().s("completed").build(),
-                            ":open", AttributeValue.builder().s("open").build()
+                            ":open", AttributeValue.builder().s("open").build(),
+                            ":email", AttributeValue.builder().s(email).build()
                     ))
                     .expressionAttributeNames(Map.of(
                             "#status", "status"
@@ -147,7 +143,8 @@ public class TaskManagementServiceImpl implements TaskManagementService {
 
             return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
         } catch (ConditionalCheckFailedException ex) {
-            throw new TaskManagementException("Invalid task status update: [completed, expired] -> completed");
+            throw new TaskManagementException("Invalid task status update: [completed, expired] -> completed or" +
+                    "unauthorized modification");
         }
     }
 

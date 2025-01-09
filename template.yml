@@ -61,6 +61,8 @@ Resources:
     Type: AWS::Cognito::UserPool
     Properties:
       UserPoolName: !Sub ${AWS::StackName}-task-management-user-pool
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
       AutoVerifiedAttributes:
         - email
       UsernameAttributes:
@@ -99,6 +101,7 @@ Resources:
       AllowedOAuthScopes:
         - email
         - openid
+        - profile
       SupportedIdentityProviders:
         - COGNITO
       ExplicitAuthFlows:

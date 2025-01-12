@@ -1,5 +1,7 @@
 package org.umaxcode.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -10,20 +12,21 @@ import org.umaxcode.exception.UserAuthException;
 import org.umaxcode.mapper.UserMapper;
 import org.umaxcode.service.UserAuthService;
 import org.umaxcode.utils.PasswordGenerator;
-import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
-import software.amazon.awssdk.services.lambda.LambdaClient;
-import software.amazon.awssdk.services.lambda.model.InvokeRequest;
+import software.amazon.awssdk.services.sfn.SfnClient;
+import software.amazon.awssdk.services.sfn.model.StartExecutionRequest;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class UserAuthServiceImpl implements UserAuthService {
 
     private final CognitoIdentityProviderClient cognitoClient;
-    private final LambdaClient lambdaClient;
+    private final SfnClient stepFunctionsClient;
 
     @Value("${application.aws.userPoolId}")
     private String userPoolId;
@@ -46,29 +49,35 @@ public class UserAuthServiceImpl implements UserAuthService {
                     .build();
 
             AdminCreateUserResponse response = cognitoClient.adminCreateUser(adminRequest);
-            invokePostConfirmationLambda(request.email());
+            startStateMachineForSNSSub(request.email());
+            System.out.println("User" + response.user());
             return "User created: " + response.user().username();
         } catch (CognitoIdentityProviderException e) {
             throw new UserAuthException("Failed to create user: " + e.getMessage());
         }
     }
 
-    private void invokePostConfirmationLambda(String email) {
-        try {
-            // Trigger the Lambda function manually (passing username as input)
+    private void startStateMachineForSNSSub(String email) {
 
-            String postLambdaArn = System.getenv("POST_CONFIRMATION_LAMBDA_ARN");
-            InvokeRequest invokeRequest = InvokeRequest.builder()
-                    .functionName(postLambdaArn)
-                    .payload(SdkBytes.fromUtf8String("{\"email\": \"" + email + "\"}"))
+        Map<String, String> jsonMap = new HashMap<>();
+        jsonMap.put("email", email);
+        jsonMap.put("workflowType", "post-confirmation-sns");
+
+        // Convert to JSON string
+        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            String jsonString = objectMapper.writeValueAsString(jsonMap);
+
+            String stepFunctionArn = System.getenv("STEP_FUNCTION_ARN");
+            StartExecutionRequest startExecutionRequest = StartExecutionRequest.builder()
+                    .stateMachineArn(stepFunctionArn)
+                    .input(jsonString)
                     .build();
 
-            lambdaClient.invoke(invokeRequest);
+            stepFunctionsClient.startExecution(startExecutionRequest);
 
-            System.out.println("Post-confirmation Lambda triggered for: " + email);
-
-        } catch (Exception e) {
-            System.err.println("Error invoking post-confirmation Lambda: " + e.getMessage());
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
         }
     }
 

@@ -79,7 +79,8 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
                 .stringValue(receiver)
                 .build());
 
-        String messageContent = String.format("Name: %s\nDescription: %s\nDeadline: %s\nAssigned by: %s", name, description, deadline, assignedBy);
+        String messageContent = String.format("Task name: %s\nTask description: %s\nTask deadline: %s\nAssigned to: %s\nAssigned by: %s",
+                name, description, deadline, receiver, assignedBy);
 
         PublishRequest publishRequest = PublishRequest.builder()
                 .topicArn(topicArn)

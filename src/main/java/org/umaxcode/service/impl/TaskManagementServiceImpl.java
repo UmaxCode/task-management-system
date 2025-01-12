@@ -30,6 +30,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     private final String queueUrl;
     private final String taskCompleteTopicArn;
     private final String taskReopenTopicArn;
+    private final String taskAssignTopicArn;
 
     @Value("${application.aws.userPoolId}")
     private String userPoolId;
@@ -40,6 +41,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         this.queueUrl = System.getenv("QUEUE_URL");
         this.taskCompleteTopicArn = System.getenv("TASKS_COMPLETE_NOTIFICATION_TOPIC_ARN");
         this.taskReopenTopicArn = System.getenv("TASKS_REOPEN_NOTIFICATION_TOPIC_ARN");
+        this.taskAssignTopicArn = System.getenv("TASKS_ASSIGNMENT_NOTIFICATION_TOPIC_ARN");
         this.sqsService = sqsService;
     }
 
@@ -189,7 +191,8 @@ public class TaskManagementServiceImpl implements TaskManagementService {
 
             // Execute the update
             UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
-
+            createMessageAndSendToQueue("Task has been reassigned", "task-reassign", updateItemResponse.attributes(),
+                    "You have been Assigned A Task", taskAssignTopicArn);
             return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
         } catch (ConditionalCheckFailedException ex) {
             throw new TaskManagementException("Invalid task status [expired, completed] during reassignment");
@@ -230,7 +233,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
             // Execute the update
             UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
             createMessageAndSendToQueue("Task has been reopened", "task-reopen",
-                    updateItemResponse.attributes(),"Task Reopened",
+                    updateItemResponse.attributes(), "Task Reopened",
                     taskReopenTopicArn);
             return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
         } catch (ConditionalCheckFailedException ex) {

@@ -56,6 +56,7 @@ Resources:
           QUEUE_URL: !Ref TasksQueue
           TASKS_COMPLETE_NOTIFICATION_TOPIC_ARN: !Ref TaskCompleteNotificationTopic
           TASKS_REOPEN_NOTIFICATION_TOPIC_ARN: !Ref ReopenedTasksNotificationTopic
+          TASKS_ASSIGNMENT_NOTIFICATION_TOPIC_ARN: !Ref TasksAssignmentNotificationTopic
 
       Events:
         ProxyResource:

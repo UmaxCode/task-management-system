@@ -2,6 +2,7 @@ package org.umaxcode;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import org.umaxcode.service.impl.SQSServiceImpl;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
@@ -12,7 +13,6 @@ import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -120,52 +120,7 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
 
         for (Map<String, AttributeValue> item : response.items()) {
 
-            Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
-
-            messageAttributes.put("taskId", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(item.get("taskId").s())
-                    .build());
-
-            messageAttributes.put("name", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(item.get("name").s())
-                    .build());
-
-            messageAttributes.put("description", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(item.get("description").s())
-                    .build());
-
-            messageAttributes.put("receiver", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(item.get("responsibility").s())
-                    .build());
-
-            messageAttributes.put("assignedBy", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(item.get("assignedBy").s())
-                    .build());
-
-            messageAttributes.put("deadline", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(item.get("deadline").s())
-                    .build());
-
-            messageAttributes.put("topicArn", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(topicArn)
-                    .build());
-
-            messageAttributes.put("reason", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(reason)
-                    .build());
-
-            messageAttributes.put("messageSubject", MessageAttributeValue.builder()
-                    .dataType("String")
-                    .stringValue(subject)
-                    .build());
+            Map<String, MessageAttributeValue> messageAttributes = SQSServiceImpl.createQueueMessage(reason, item, subject, topicArn);
 
             // Send the message to SQS with attributes
             SendMessageRequest sendMessageRequest = SendMessageRequest.builder()

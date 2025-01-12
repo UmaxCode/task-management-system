@@ -163,7 +163,6 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         }
     }
 
-
     @Override
     public TaskDto reAssignTask(String id, ReassignTaskDto request) {
 
@@ -304,56 +303,8 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
     }
 
-
     private void createMessageAndSendToQueue(String messageBody, String reason, Map<String, AttributeValue> taskDetails, String subject, String topicArn) {
-
-        Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
-
-        messageAttributes.put("taskId", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(taskDetails.get("taskId").s())
-                .build());
-
-        messageAttributes.put("name", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(taskDetails.get("name").s())
-                .build());
-
-        messageAttributes.put("description", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(taskDetails.get("description").s())
-                .build());
-
-        messageAttributes.put("receiver", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(taskDetails.get("responsibility").s())
-                .build());
-
-        messageAttributes.put("assignedBy", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(taskDetails.get("assignedBy").s())
-                .build());
-
-        messageAttributes.put("deadline", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(taskDetails.get("deadline").s())
-                .build());
-
-        messageAttributes.put("topicArn", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(topicArn)
-                .build());
-
-        messageAttributes.put("reason", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(reason)
-                .build());
-
-        messageAttributes.put("messageSubject", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(subject)
-                .build());
-
+        Map<String, MessageAttributeValue> messageAttributes = SQSServiceImpl.createQueueMessage(reason, taskDetails, subject, topicArn);
         sqsService.sendMessageToQueue(messageBody, messageAttributes, queueUrl);
     }
 }

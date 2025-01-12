@@ -151,7 +151,8 @@ public class TaskManagementServiceImpl implements TaskManagementService {
 
             // Execute the update
             UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
-            createMessageAndSendToQueue("Task has been completed", "task-complete", updateItemResponse.attributes(),
+            createMessageAndSendToQueue("Task has been completed", "task-complete",
+                    updateItemResponse.attributes(), "Task Completed",
                     taskCompleteTopicArn);
             return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
         } catch (ConditionalCheckFailedException ex) {
@@ -228,7 +229,8 @@ public class TaskManagementServiceImpl implements TaskManagementService {
 
             // Execute the update
             UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
-            createMessageAndSendToQueue("Task has been reopened", "task-reopen", updateItemResponse.attributes(),
+            createMessageAndSendToQueue("Task has been reopened", "task-reopen",
+                    updateItemResponse.attributes(),"Task Reopened",
                     taskReopenTopicArn);
             return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
         } catch (ConditionalCheckFailedException ex) {
@@ -300,7 +302,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
 
-    private void createMessageAndSendToQueue(String messageBody, String reason, Map<String, AttributeValue> taskDetails, String topicArn) {
+    private void createMessageAndSendToQueue(String messageBody, String reason, Map<String, AttributeValue> taskDetails, String subject, String topicArn) {
 
         Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
 
@@ -342,6 +344,11 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         messageAttributes.put("reason", MessageAttributeValue.builder()
                 .dataType("String")
                 .stringValue(reason)
+                .build());
+
+        messageAttributes.put("messageSubject", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(subject)
                 .build());
 
         sqsService.sendMessageToQueue(messageBody, messageAttributes, queueUrl);

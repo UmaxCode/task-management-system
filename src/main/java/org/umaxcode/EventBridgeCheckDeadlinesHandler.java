@@ -78,7 +78,7 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
 
         if (queryResponse.hasItems()) {
             writeToQueue(queryResponse, "A task has reach deadline",
-                    "task-hit-deadline",
+                    "task-hit-deadline", "Task has been closed",
                     taskClosedTopicArn);
         }
     }
@@ -111,12 +111,12 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
 
         if (queryResponse.hasItems()) {
             writeToQueue(queryResponse, "A task has approach deadline",
-                    "task-approach-deadline",
+                    "task-approach-deadline", "Task Approach Deadline",
                     taskDeadlineTopicArn);
         }
     }
 
-    private void writeToQueue(QueryResponse response, String sQsMessageBody, String reason, String topicArn) {
+    private void writeToQueue(QueryResponse response, String sQsMessageBody, String reason, String subject, String topicArn) {
 
         for (Map<String, AttributeValue> item : response.items()) {
 
@@ -160,6 +160,11 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
             messageAttributes.put("reason", MessageAttributeValue.builder()
                     .dataType("String")
                     .stringValue(reason)
+                    .build());
+
+            messageAttributes.put("messageSubject", MessageAttributeValue.builder()
+                    .dataType("String")
+                    .stringValue(subject)
                     .build());
 
             // Send the message to SQS with attributes

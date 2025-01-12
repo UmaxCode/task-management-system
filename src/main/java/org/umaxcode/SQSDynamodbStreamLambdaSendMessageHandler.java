@@ -74,6 +74,11 @@ public class SQSDynamodbStreamLambdaSendMessageHandler implements RequestHandler
                         .stringValue("task-creation")
                         .build());
 
+                messageAttributes.put("messageSubject", MessageAttributeValue.builder()
+                        .dataType("String")
+                        .stringValue("New Task Assignment")
+                        .build());
+
                 // Send the message to SQS with attributes
                 SendMessageRequest sendMessageRequest = SendMessageRequest.builder()
                         .queueUrl(queueUrl)

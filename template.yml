@@ -335,7 +335,8 @@ Resources:
                         "receiver.$": "$.receiver",
                         "assignedBy.$": "$.assignedBy",
                         "taskDeadline.$": "$.taskDeadline",
-                        "topicArn.$": "$.topicArn"
+                        "topicArn.$": "$.topicArn",
+                        "snsSubject.$": "$.snsSubject"
                       },
                       "End": true
                     }

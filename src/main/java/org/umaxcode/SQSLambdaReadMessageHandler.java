@@ -15,7 +15,7 @@ import software.amazon.awssdk.services.sns.model.PublishResponse;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, String> {
+public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Void> {
 
     private final SnsClient snsClient;
     private final SfnClient stepFunctionsClient;
@@ -26,14 +26,10 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
     }
 
     @Override
-    public String handleRequest(SQSEvent event, Context context) {
+    public Void handleRequest(SQSEvent event, Context context) {
         for (SQSEvent.SQSMessage message : event.getRecords()) {
             // Process each message
-            String messageBody = message.getBody();
             String messageReason = message.getMessageAttributes().get("reason").getStringValue();
-
-            System.out.println("Message body: " + messageBody);
-            System.out.println("Message attributes: " + messageReason);
 
             String taskId = message.getMessageAttributes().get("taskId").getStringValue();
             String receiver = message.getMessageAttributes().get("receiver").getStringValue();
@@ -42,35 +38,22 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
             String description = message.getMessageAttributes().get("description").getStringValue();
             String deadline = message.getMessageAttributes().get("deadline").getStringValue();
             String topicArn = message.getMessageAttributes().get("topicArn").getStringValue();
+            String subject = message.getMessageAttributes().get("messageSubject").getStringValue();
 
-            if ("task-creation".equals(messageReason)) {
-                System.out.println("Sending task creation notification");
-                sendTaskNotification(receiver, assignedBy, name, description, deadline,
-                        topicArn, "New Task Assignment");
-            } else if ("task-hit-deadline".equals(messageReason)) {
+            if ("task-hit-deadline".equals(messageReason)) {
                 System.out.println("Sending task deadline notification");
                 try {
-                    triggerStepFunction(taskId, topicArn, name, description, receiver, deadline, assignedBy);
+                    triggerStepFunction(taskId, topicArn, name, description, receiver, subject, deadline, assignedBy);
                 } catch (JsonProcessingException e) {
                     e.printStackTrace();
                 }
-            } else if ("task-approach-deadline".equals(messageReason)) {
-                System.out.println("Sending task approach deadline notification");
-                sendTaskNotification(receiver, assignedBy, name, description, deadline,
-                        topicArn, "Task Approach Deadline");
-            } else if ("task-complete".equals(messageReason)) {
-                System.out.println("Sending task complete notification");
-                sendTaskNotification(receiver, assignedBy, name, description, deadline, topicArn,
-                        "Task Complete");
-            } else if ("task-reopen".equals(messageReason)) {
-                System.out.println("Sending task reopen notification");
-                sendTaskNotification(receiver, assignedBy, name, description, deadline, topicArn,
-                        "Task Reopen");
-            } else {
-                context.getLogger().log("Invalid message reason");
+                break;
             }
+
+            sendTaskNotification(receiver, assignedBy, name, description, deadline,
+                    topicArn, subject);
         }
-        return "Processed message successfully!";
+        return null;
     }
 
     private void sendTaskNotification(String receiver, String assignedBy, String name, String description,
@@ -103,7 +86,7 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
     }
 
     private void triggerStepFunction(String taskId, String topicArn, String name, String description,
-                                     String receiver, String deadline, String assignedBy) throws JsonProcessingException {
+                                     String receiver,String snsSubject, String deadline, String assignedBy) throws JsonProcessingException {
         Map<String, String> jsonMap = new HashMap<>();
         jsonMap.put("taskId", taskId);
         jsonMap.put("workflowType", "task-deadline-hit");
@@ -113,6 +96,7 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
         jsonMap.put("assignedBy", assignedBy);
         jsonMap.put("topicArn", topicArn);
         jsonMap.put("taskDeadline", deadline);
+        jsonMap.put("snsSubject", snsSubject);
 
         ObjectMapper objectMapper = new ObjectMapper();
 

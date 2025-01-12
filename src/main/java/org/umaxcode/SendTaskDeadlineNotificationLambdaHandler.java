@@ -31,6 +31,7 @@ public class SendTaskDeadlineNotificationLambdaHandler implements RequestHandler
         String assignedBy = event.get("assignedBy");
         String topicArn = event.get("topicArn");
         String taskDeadline = event.get("taskDeadline");
+        String snsSubject = event.get("snsSubject");
 
         // Create message attributes sns filtering
         List<String> listOfRecipients = new ArrayList<>();
@@ -48,12 +49,12 @@ public class SendTaskDeadlineNotificationLambdaHandler implements RequestHandler
                     .stringValue(jsonList)
                     .build());
 
-            String messageContent = String.format("Id: %s\nName: %s\nDescription: %s\nDeadline: %s\nAssigned by: %s",
-                    taskId, taskName, taskDescription, taskDeadline, assignedBy);
+            String messageContent = String.format("Id: %s\nName: %s\nDescription: %s\nDeadline: %s\nAssigned to: %s\nAssigned by: %s",
+                    taskId, taskName, taskDescription, taskDeadline, receiver, assignedBy);
 
             PublishRequest publishRequest = PublishRequest.builder()
                     .topicArn(topicArn)
-                    .subject("Task has been closed")
+                    .subject(snsSubject)
                     .message(messageContent)
                     .messageAttributes(messageAttributes)
                     .build();

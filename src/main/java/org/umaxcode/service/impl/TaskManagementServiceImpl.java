@@ -8,10 +8,12 @@ import org.umaxcode.domain.dto.response.TaskDto;
 import org.umaxcode.domain.enums.TaskStatus;
 import org.umaxcode.exception.TaskManagementException;
 import org.umaxcode.mapper.TaskMapper;
+import org.umaxcode.service.SQSService;
 import org.umaxcode.service.TaskManagementService;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
+import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -24,13 +26,19 @@ public class TaskManagementServiceImpl implements TaskManagementService {
 
     private final DynamoDbClient dynamoDbClient;
     private final String tasksTableName;
+    private final SQSService sqsService;
+    private final String queueUrl;
+    private final String taskCompleteTopicArn;
 
     @Value("${application.aws.userPoolId}")
     private String userPoolId;
 
-    public TaskManagementServiceImpl(DynamoDbClient dynamoDbClient, CognitoIdentityProviderClient cognitoClient) {
+    public TaskManagementServiceImpl(DynamoDbClient dynamoDbClient, CognitoIdentityProviderClient cognitoClient, SQSService sqsService) {
         this.dynamoDbClient = dynamoDbClient;
         this.tasksTableName = System.getenv("TASKS_TABLE_NAME");
+        this.queueUrl = System.getenv("QUEUE_URL");
+        this.taskCompleteTopicArn = System.getenv("TASKS_COMPLETE_NOTIFICATION_TOPIC_ARN");
+        this.sqsService = sqsService;
     }
 
     @Override
@@ -44,7 +52,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         item.put("responsibility", AttributeValue.builder().s(request.responsibility()).build());
         item.put("deadline", AttributeValue.builder().s(request.deadline().toString()).build());
         item.put("assignedBy", AttributeValue.builder().s(email).build());
-        item.put("isNotifiedForApproachDeadline", AttributeValue.builder().bool(false).build());
+        item.put("isNotifiedForApproachDeadline", AttributeValue.builder().n("0").build());
 
 
         PutItemRequest putRequest = PutItemRequest.builder()
@@ -141,13 +149,15 @@ public class TaskManagementServiceImpl implements TaskManagementService {
 
             // Execute the update
             UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
-
+            createMessageAndSendToQueue("Task has been completed", "task-complete", updateItemResponse.attributes(),
+                    taskCompleteTopicArn);
             return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
         } catch (ConditionalCheckFailedException ex) {
             throw new TaskManagementException("Invalid task status update: [completed, expired] -> completed or" +
                     "unauthorized modification");
         }
     }
+
 
     @Override
     public TaskDto reAssignTask(String id, ReassignTaskDto request) {
@@ -284,5 +294,53 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
 
         return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
+    }
+
+
+    private void createMessageAndSendToQueue(String messageBody, String reason, Map<String,AttributeValue> taskDetails, String topicArn){
+
+        Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
+
+        messageAttributes.put("taskId", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(taskDetails.get("taskId").s())
+                .build());
+
+        messageAttributes.put("name", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(taskDetails.get("name").s())
+                .build());
+
+        messageAttributes.put("description", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(taskDetails.get("description").s())
+                .build());
+
+        messageAttributes.put("receiver", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(taskDetails.get("responsibility").s())
+                .build());
+
+        messageAttributes.put("assignedBy", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(taskDetails.get("assignedBy").s())
+                .build());
+
+        messageAttributes.put("deadline", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(taskDetails.get("deadline").s())
+                .build());
+
+        messageAttributes.put("topicArn", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(topicArn)
+                .build());
+
+        messageAttributes.put("reason", MessageAttributeValue.builder()
+                .dataType("String")
+                .stringValue(reason)
+                .build());
+
+        sqsService.sendMessageToQueue(messageBody, messageAttributes, queueUrl);
     }
 }

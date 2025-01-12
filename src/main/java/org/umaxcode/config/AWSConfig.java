@@ -9,6 +9,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sqs.SqsClient;
+import software.amazon.awssdk.services.sfn.SfnClient;
 
 @Configuration
 public class AWSConfig {
@@ -33,6 +34,13 @@ public class AWSConfig {
     @Bean
     public LambdaClient lambdaClient() {
         return LambdaClient.builder()
+                .region(Region.of(awsRegion))
+                .build();
+    }
+
+    @Bean
+    public SfnClient sfnClient() {
+        return SfnClient.builder()
                 .region(Region.of(awsRegion))
                 .build();
     }

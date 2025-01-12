@@ -12,7 +12,6 @@ import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -64,9 +63,9 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
                 .tableName(tasksTableName)  // Main table name
                 .indexName("statusIndex")   // GSI name
                 .keyConditionExpression("#status = :open")
-                .filterExpression("deadline <= :deadline")
+                .filterExpression("deadline <= :current")
                 .expressionAttributeValues(Map.of(
-                        ":deadline", AttributeValue.builder().s(now.toString()).build(),
+                        ":current", AttributeValue.builder().s(now.toString()).build(),
                         ":open", AttributeValue.builder().s("open").build()
                 )).expressionAttributeNames(Map.of(
                         "#status", "status"
@@ -86,7 +85,7 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
 
     private void checkTasksWithAnHourToDeadlineAndWriteToSQS() {
 
-        LocalDateTime currentTime = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime currentTime = LocalDateTime.now();
         LocalDateTime oneHourFromNow = currentTime.plusHours(1);
 
         // Query tasks nearing their deadlines
@@ -94,12 +93,12 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
                 .tableName(tasksTableName)
                 .indexName("statusIndex") // GSI on `deadline`
                 .keyConditionExpression("#status = :open")
-                .filterExpression("deadline BETWEEN :current AND :oneHourLater AND isNotifiedForApproachDeadline = :false")
+                .filterExpression("deadline > :current AND deadline <= :oneHourLater AND isNotifiedForApproachDeadline = :false")
                 .expressionAttributeValues(Map.of(
                         ":current", AttributeValue.builder().s(currentTime.toString()).build(),
                         ":oneHourLater", AttributeValue.builder().s(oneHourFromNow.toString()).build(),
                         ":open", AttributeValue.builder().s("open").build(),
-                        ":false", AttributeValue.builder().bool(false).build()
+                        ":false", AttributeValue.builder().n("0").build()
                 )).expressionAttributeNames(Map.of(
                         "#status", "status"
                 ))
@@ -181,7 +180,7 @@ public class EventBridgeCheckDeadlinesHandler implements RequestHandler<Object, 
                             .key(Map.of("taskId", AttributeValue.builder().s(taskId).build()))
                             .updateExpression("SET isNotifiedForApproachDeadline = :true")
                             .expressionAttributeValues(Map.of(
-                                    ":true", AttributeValue.builder().bool(true).build()
+                                    ":true", AttributeValue.builder().n("1").build()
                             ))
                             .build();
 

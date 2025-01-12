@@ -33,6 +33,8 @@ Resources:
         - AWSLambdaBasicExecutionRole
         - DynamoDBCrudPolicy:
             TableName: !Ref TasksTable
+        - SQSSendMessagePolicy:
+            QueueName: tasks-queue
         - Statement:
             Effect: Allow
             Action:
@@ -43,13 +45,17 @@ Resources:
         - Statement:
             Effect: Allow
             Action:
-              - lambda:InvokeFunction
-            Resource: !GetAtt PostConfirmationFunction.Arn
+              - states:StartExecution
+            Resource:
+              - !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
       Environment:
         Variables:
           TASKS_TABLE_NAME: !Ref TasksTableName
           AWS_COGNITO_USER_POOL_ID: !Ref UserPool
-          POST_CONFIRMATION_LAMBDA_ARN: !GetAtt PostConfirmationFunction.Arn
+          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
+          QUEUE_URL: !Ref TasksQueue
+          TASKS_COMPLETE_NOTIFICATION_TOPIC_ARN: !Ref TaskCompleteNotificationTopic
+
       Events:
         ProxyResource:
           Type: Api
@@ -181,23 +187,6 @@ Resources:
               - !Ref TasksDeadlineNotificationTopic
               - !Ref ClosedTasksNotificationTopic
               - !Ref ReopenedTasksNotificationTopic
-
-  PostConfirmationFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: org.umaxcode.UserCreationConfirmationHandler::handleRequest
-      CodeUri: .
-      Policies:
-        - AWSLambdaBasicExecutionRole
-        - Statement:
-            Effect: Allow
-            Action:
-              - states:StartExecution
-            Resource:
-              - !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
-      Environment:
-        Variables:
-          STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
 
   SNSSubStateMachineRole:
     Type: AWS::IAM::Role
@@ -373,8 +362,8 @@ Resources:
           AttributeType: "S"
         - AttributeName: "status"
           AttributeType: "S"
-        - AttributeName: "isNotified"
-          AttributeType: "S"
+        - AttributeName: "isNotifiedForApproachDeadline"
+          AttributeType: "N"
       KeySchema:
         - AttributeName: "taskId"
           KeyType: "HASH"
@@ -397,9 +386,9 @@ Resources:
               KeyType: "HASH"
           Projection:
             ProjectionType: ALL
-        - IndexName: "isNotifiedIndex"  # Name of the GSI
+        - IndexName: "isNotifiedForApproachDeadlineIndex"  # Name of the GSI
           KeySchema:
-            - AttributeName: "isNotified"  # Partition key for the GSI
+            - AttributeName: "isNotifiedForApproachDeadline"  # Partition key for the GSI
               KeyType: "HASH"
           Projection:
             ProjectionType: ALL
@@ -498,8 +487,12 @@ Resources:
       Policies:
         - SQSSendMessagePolicy: # Predefined policy to send messages
             QueueName: tasks-queue
-        - DynamoDBReadPolicy:
-            TableName: !Ref TasksTable
+        - Statement:
+            Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:UpdateItem
+            Resource: !GetAtt TasksTable.Arn
       Environment:
         Variables:
           QUEUE_URL: !Ref TasksQueue

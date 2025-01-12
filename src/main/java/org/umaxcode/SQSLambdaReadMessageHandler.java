@@ -62,6 +62,10 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Str
                 System.out.println("Sending task complete notification");
                 sendTaskNotification(receiver, assignedBy, name, description, deadline, topicArn,
                         "Task Complete");
+            } else if ("task-reopen".equals(messageReason)) {
+                System.out.println("Sending task reopen notification");
+                sendTaskNotification(receiver, assignedBy, name, description, deadline, topicArn,
+                        "Task Reopen");
             } else {
                 context.getLogger().log("Invalid message reason");
             }

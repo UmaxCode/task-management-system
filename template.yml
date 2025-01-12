@@ -55,6 +55,7 @@ Resources:
           STEP_FUNCTION_ARN: !GetAtt StepFunctionsStateMachineSNSSubAndTaskDeadlineNot.Arn
           QUEUE_URL: !Ref TasksQueue
           TASKS_COMPLETE_NOTIFICATION_TOPIC_ARN: !Ref TaskCompleteNotificationTopic
+          TASKS_REOPEN_NOTIFICATION_TOPIC_ARN: !Ref ReopenedTasksNotificationTopic
 
       Events:
         ProxyResource:

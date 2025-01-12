@@ -15,7 +15,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.*;
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +29,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     private final SQSService sqsService;
     private final String queueUrl;
     private final String taskCompleteTopicArn;
+    private final String taskReopenTopicArn;
 
     @Value("${application.aws.userPoolId}")
     private String userPoolId;
@@ -38,6 +39,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         this.tasksTableName = System.getenv("TASKS_TABLE_NAME");
         this.queueUrl = System.getenv("QUEUE_URL");
         this.taskCompleteTopicArn = System.getenv("TASKS_COMPLETE_NOTIFICATION_TOPIC_ARN");
+        this.taskReopenTopicArn = System.getenv("TASKS_REOPEN_NOTIFICATION_TOPIC_ARN");
         this.sqsService = sqsService;
     }
 
@@ -202,9 +204,9 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                     "taskId", AttributeValue.builder().s(id).build()
             );
 
-            // Calculate the current time + 1 hour in seconds since the epoch
-            long currentTimeInSeconds = Instant.now().getEpochSecond();
-            long minimumDeadline = currentTimeInSeconds + 3600;
+            // Calculate the current time + 1 hour
+            LocalDateTime currentTime = LocalDateTime.now();
+            LocalDateTime oneHourFromNow = currentTime.plusHours(1);
 
             // Create the UpdateItemRequest
             UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
@@ -216,7 +218,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                             ":status", AttributeValue.builder().s("open").build(),
                             ":deadline", AttributeValue.builder().s(request.deadline().toString()).build(),
                             ":expired", AttributeValue.builder().s("expired").build(),
-                            ":minimumDeadline", AttributeValue.builder().n(String.valueOf(minimumDeadline)).build()
+                            ":minimumDeadline", AttributeValue.builder().s(oneHourFromNow.toString()).build()
                     ))
                     .expressionAttributeNames(Map.of(
                             "#status", "status"
@@ -226,11 +228,12 @@ public class TaskManagementServiceImpl implements TaskManagementService {
 
             // Execute the update
             UpdateItemResponse updateItemResponse = dynamoDbClient.updateItem(updateItemRequest);
-
+            createMessageAndSendToQueue("Task has been reopened", "task-reopen", updateItemResponse.attributes(),
+                    taskReopenTopicArn);
             return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
         } catch (ConditionalCheckFailedException ex) {
             throw new TaskManagementException("Invalid task status update: [open, completed] -> open" +
-                    " or or the deadline is less than 1 hour in the future.");
+                    " or the deadline is less than 1 hour from now.");
         }
     }
 
@@ -297,7 +300,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
 
-    private void createMessageAndSendToQueue(String messageBody, String reason, Map<String,AttributeValue> taskDetails, String topicArn){
+    private void createMessageAndSendToQueue(String messageBody, String reason, Map<String, AttributeValue> taskDetails, String topicArn) {
 
         Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
 

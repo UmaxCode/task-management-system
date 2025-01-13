@@ -211,17 +211,20 @@ public class TaskManagementServiceImpl implements TaskManagementService {
             LocalDateTime currentTime = LocalDateTime.now();
             LocalDateTime oneHourFromNow = currentTime.plusHours(1);
 
+            if(request.deadline().isBefore(oneHourFromNow)) {
+                throw new TaskManagementException("Deadline must be greater or equal to 1 hour.");
+            }
+
             // Create the UpdateItemRequest
             UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
                     .tableName(tasksTableName)
                     .key(key)
                     .updateExpression("SET #status = :status, deadline = :deadline")
-                    .conditionExpression("#status = :expired AND deadline >= :minimumDeadline")
+                    .conditionExpression("#status = :expired")
                     .expressionAttributeValues(Map.of(
                             ":status", AttributeValue.builder().s("open").build(),
                             ":deadline", AttributeValue.builder().s(request.deadline().toString()).build(),
-                            ":expired", AttributeValue.builder().s("expired").build(),
-                            ":minimumDeadline", AttributeValue.builder().s(oneHourFromNow.toString()).build()
+                            ":expired", AttributeValue.builder().s("expired").build()
                     ))
                     .expressionAttributeNames(Map.of(
                             "#status", "status"
@@ -236,8 +239,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                     taskReopenTopicArn);
             return TaskMapper.mapToTaskDto(updateItemResponse.attributes());
         } catch (ConditionalCheckFailedException ex) {
-            throw new TaskManagementException("Invalid task status update: [open, completed] -> open" +
-                    " or the deadline is less than 1 hour from now.");
+            throw new TaskManagementException("Invalid task status update: [open, completed] -> open");
         }
     }
 

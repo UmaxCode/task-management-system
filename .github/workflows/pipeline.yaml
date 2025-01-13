@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - 'main'
+      - 'feat**'
+  delete:
+    branches:
+      - 'feat**'
 
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.PIPELINE_USER_ACCESS_KEY_ID }}

@@ -442,6 +442,9 @@ Resources:
               - sns:Publish
             Resource:
               - !Ref TasksAssignmentNotificationTopic
+              - !Ref TasksDeadlineNotificationTopic
+              - !Ref ReopenedTasksNotificationTopic
+              - !Ref TaskCompleteNotificationTopic
         - Statement:
             Effect: Allow
             Action:
@@ -490,12 +493,8 @@ Resources:
       Policies:
         - SQSSendMessagePolicy: # Predefined policy to send messages
             QueueName: tasks-queue
-        - Statement:
-            Effect: Allow
-            Action:
-              - dynamodb:GetItem
-              - dynamodb:UpdateItem
-            Resource: !GetAtt TasksTable.Arn
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TasksTable
       Environment:
         Variables:
           QUEUE_URL: !Ref TasksQueue

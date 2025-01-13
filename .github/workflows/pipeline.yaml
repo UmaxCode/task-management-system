@@ -131,7 +131,7 @@ jobs:
             --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
             --no-fail-on-empty-changeset \
             --role-arn ${TESTING_CLOUDFORMATION_EXECUTION_ROLE}
-            --parameter-overrides ${TESTING_PARAMETER_OVERRIDES}
+            --parameter-overrides TasksTableName=tasks,CognitoCallbackURL=https://start.spring.io/,UserPoolAdminGroupName=apiAdmins
 
   integration-test:
     if: github.ref == 'refs/heads/main'

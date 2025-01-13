@@ -14,7 +14,7 @@ env:
   PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.PIPELINE_USER_SECRET_ACCESS_KEY }}
   SAM_TEMPLATE: template.yaml
   TESTING_STACK_NAME: task-management-system-testing
-  TESTING_PARAMETER_OVERRIDES: ""TasksTableName=\"tasks\" CognitoCallbackURL=\"https://https://www.djangoproject.com/download/\" UserPoolAdminGroupName=\"apiAdmins\"""
+  TESTING_PARAMETER_OVERRIDES: "TasksTableName=\"tasks\" CognitoCallbackURL=\"https://https://www.djangoproject.com/download/\" UserPoolAdminGroupName=\"apiAdmins\""
   TESTING_PIPELINE_EXECUTION_ROLE: ${{ secrets.TESTING_PIPELINE_EXECUTION_ROLE }}
   TESTING_CLOUDFORMATION_EXECUTION_ROLE: ${{ secrets.TESTING_CLOUDFORMATION_EXECUTION_ROLE }}
   TESTING_ARTIFACTS_BUCKET: ${{ secrets.TESTING_ARTIFACTS_BUCKET }}
@@ -24,7 +24,7 @@ env:
   # TESTING_IMAGE_REPOSITORY = '0123456789.dkr.ecr.region.amazonaws.com/repository-name'
   TESTING_REGION: ${{ secrets.AWS_REGION }}
   PROD_STACK_NAME: task-management-system-productions
-  PRODUCTION_PARAMETER_OVERRIDES: ""TasksTableName=\"tasks\" CognitoCallbackURL=\"https://start.spring.io/\" UserPoolAdminGroupName=\"apiAdmins\"""
+  PRODUCTION_PARAMETER_OVERRIDES: "TasksTableName=\"tasks\" CognitoCallbackURL=\"https://start.spring.io/\" UserPoolAdminGroupName=\"apiAdmins\""
   PROD_PIPELINE_EXECUTION_ROLE: ${{ secrets.PROD_PIPELINE_EXECUTION_ROLE }}
   PROD_CLOUDFORMATION_EXECUTION_ROLE: ${{ secrets.PROD_CLOUDFORMATION_EXECUTION_ROLE }}
   PROD_ARTIFACTS_BUCKET: ${{ secrets.PROD_ARTIFACTS_BUCKET }}

@@ -12,7 +12,9 @@ import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.PublishResponse;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Void> {
@@ -59,12 +61,26 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Voi
     private void sendTaskNotification(String receiver, String assignedBy, String name, String description,
                                       String deadline, String topicArn, String title
     ) {
+
         // Create message attributes sns filtering
+        List<String> listOfRecipients = new ArrayList<>();
+        listOfRecipients.add(receiver);
+        listOfRecipients.add(assignedBy);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String jsonList;
+        try {
+            jsonList = objectMapper.writeValueAsString(listOfRecipients);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
+
         Map<String, MessageAttributeValue> messageAttributes = new HashMap<>();
         messageAttributes.put("endpointEmail", MessageAttributeValue.builder()
-                .dataType("String")
-                .stringValue(receiver)
+                .dataType("String.Array")
+                .stringValue(jsonList)
                 .build());
+
 
         String messageContent = String.format("Task name: %s\nTask description: %s\nTask deadline: %s\nAssigned to: %s\nAssigned by: %s",
                 name, description, deadline, receiver, assignedBy);
@@ -86,7 +102,7 @@ public class SQSLambdaReadMessageHandler implements RequestHandler<SQSEvent, Voi
     }
 
     private void triggerStepFunction(String taskId, String topicArn, String name, String description,
-                                     String receiver,String snsSubject, String deadline, String assignedBy) throws JsonProcessingException {
+                                     String receiver, String snsSubject, String deadline, String assignedBy) throws JsonProcessingException {
         Map<String, String> jsonMap = new HashMap<>();
         jsonMap.put("taskId", taskId);
         jsonMap.put("workflowType", "task-deadline-hit");

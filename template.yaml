@@ -34,7 +34,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref TasksTable
         - SQSSendMessagePolicy:
-            QueueName: tasks-queue
+            QueueName: !Sub ${AWS::StackName}-tasks-queue
         - Statement:
             Effect: Allow
             Action:
@@ -408,7 +408,7 @@ Resources:
         - SQSSendMessagePolicy: # Predefined policy to send messages
             QueueName: !Sub ${AWS::StackName}-tasks-queue
         - DynamoDBStreamReadPolicy: # Predefined policy to read from DynamoDB streams
-            TableName: !Sub ${AWS::StackName}-${TasksTableName}
+            TableName: !Ref TasksTable
             StreamName: !GetAtt TasksTable.StreamArn
       Environment:
         Variables:
@@ -492,7 +492,7 @@ Resources:
       CodeUri: .
       Policies:
         - SQSSendMessagePolicy: # Predefined policy to send messages
-            QueueName: tasks-queue
+            QueueName: !Sub ${AWS::StackName}-tasks-queue
         - DynamoDBCrudPolicy:
             TableName: !Ref TasksTable
       Environment:

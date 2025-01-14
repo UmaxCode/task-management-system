@@ -14,7 +14,7 @@ env:
   TESTING_PIPELINE_EXECUTION_ROLE: ${{ secrets.TESTING_PIPELINE_EXECUTION_ROLE }}
   TESTING_CLOUDFORMATION_EXECUTION_ROLE: ${{ secrets.TESTING_CLOUDFORMATION_EXECUTION_ROLE }}
   TESTING_ARTIFACTS_BUCKET: ${{ secrets.TESTING_ARTIFACTS_BUCKET }}
-  TESTING_PARAMETER_OVERRIDES: TasksTableName=tasks CognitoCallbackURL=https://dev.d2x151q2vf1tfl.amplifyapp.com/auth/callback UserPoolAdminGroupName=apiAdmins
+  TESTING_PARAMETER_OVERRIDES: TasksTableName=test-tasks CognitoCallbackURL=https://dev.d2x151q2vf1tfl.amplifyapp.com/auth/callback UserPoolAdminGroupName=apiAdmins
   # If there are functions with "Image" PackageType in your template,
   # uncomment the line below and add "--image-repository ${TESTING_IMAGE_REPOSITORY}" to
   # testing "sam package" and "sam deploy" commands.
@@ -24,7 +24,7 @@ env:
   PROD_PIPELINE_EXECUTION_ROLE: ${{ secrets.PROD_PIPELINE_EXECUTION_ROLE }}
   PROD_CLOUDFORMATION_EXECUTION_ROLE: ${{ secrets.PROD_CLOUDFORMATION_EXECUTION_ROLE }}
   PROD_ARTIFACTS_BUCKET: ${{ secrets.PROD_ARTIFACTS_BUCKET }}
-  PRODUCTION_PARAMETER_OVERRIDES: TasksTableName=tasks CognitoCallbackURL=https://main.d1m5j798vicdd1.amplifyapp.com/auth/callback UserPoolAdminGroupName=apiAdmins
+  PRODUCTION_PARAMETER_OVERRIDES: TasksTableName=prod-tasks CognitoCallbackURL=https://main.d1m5j798vicdd1.amplifyapp.com/auth/callback UserPoolAdminGroupName=apiAdmins
   # If there are functions with "Image" PackageType in your template,
   # uncomment the line below and add "--image-repository ${PROD_IMAGE_REPOSITORY}" to
   # prod "sam package" and "sam deploy" commands.

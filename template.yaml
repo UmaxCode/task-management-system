@@ -355,7 +355,7 @@ Resources:
   TasksTable: # Creates the DynamoDB table for user tasks
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${AWS::StackName}-${TasksTableName}
+      TableName: !Ref TasksTableName
       AttributeDefinitions:
         - AttributeName: "taskId"
           AttributeType: "S"

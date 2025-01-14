@@ -137,7 +137,7 @@ Resources:
     Type: AWS::Cognito::UserPoolGroup
     Properties:
       Description: User group for API Administrators
-      GroupName: !Ref UserPoolAdminGroupName
+      GroupName: !Sub ${AWS::StackName}-${UserPoolAdminGroupName}
       Precedence: 0
       UserPoolId: !Ref UserPool
 
@@ -145,31 +145,31 @@ Resources:
   TasksAssignmentNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: tasks-assignment-notifications
+      TopicName: !Sub ${AWS::StackName}-tasks-assignment-notifications
       DisplayName: "Task Assignment Notifications"
 
   TasksDeadlineNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: tasks-deadline-notifications
+      TopicName: !Sub ${AWS::StackName}-tasks-deadline-notifications
       DisplayName: "Task Deadline Notifications"
 
   ClosedTasksNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: closed-tasks-notifications
+      TopicName: !Sub ${AWS::StackName}-closed-tasks-notifications
       DisplayName: "Closed Tasks Notifications"
 
   ReopenedTasksNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: reopened-tasks-notifications
+      TopicName: !Sub ${AWS::StackName}-reopened-tasks-notifications
       DisplayName: "Reopened Tasks Notifications"
 
   TaskCompleteNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: task-complete-notifications
+      TopicName: !Sub ${AWS::StackName}-task-complete-notifications
       DisplayName: "task completion Notifications"
 
   SNSTopicSubscriptionFunction:
@@ -355,7 +355,7 @@ Resources:
   TasksTable: # Creates the DynamoDB table for user tasks
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Ref TasksTableName
+      TableName: !Sub ${AWS::StackName}-${TasksTableName}
       AttributeDefinitions:
         - AttributeName: "taskId"
           AttributeType: "S"
@@ -406,9 +406,9 @@ Resources:
       CodeUri: .
       Policies:
         - SQSSendMessagePolicy: # Predefined policy to send messages
-            QueueName: tasks-queue
+            QueueName: !Sub ${AWS::StackName}-tasks-queue
         - DynamoDBStreamReadPolicy: # Predefined policy to read from DynamoDB streams
-            TableName: !Ref TasksTable
+            TableName: !Sub ${AWS::StackName}-${TasksTableName}
             StreamName: !GetAtt TasksTable.StreamArn
       Environment:
         Variables:
@@ -464,7 +464,7 @@ Resources:
   TasksQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: tasks-queue
+      QueueName: !Sub ${AWS::StackName}-tasks-queue
 
   TaskQueuePolicy:
     Type: AWS::SQS::QueuePolicy

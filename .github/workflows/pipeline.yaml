@@ -113,7 +113,7 @@ jobs:
 
   deploy-testing:
     if: github.ref == 'refs/heads/dev'
-    needs: [build-and-package]
+    needs: [build-and-package-for-testing]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -148,7 +148,7 @@ jobs:
 
   integration-test:
     if: github.ref == 'refs/heads/main'
-    needs: [deploy-testing]
+    needs: [build-and-package-for-production]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

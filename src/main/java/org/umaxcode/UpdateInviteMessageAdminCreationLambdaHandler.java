@@ -62,7 +62,7 @@ public class UpdateInviteMessageAdminCreationLambdaHandler implements RequestHan
                 return null;
             }
 
-            updateInviteMessageTemplate(adminEmail, loginUrl, userPoolId, responseData, context);
+            updateInviteMessageTemplate(adminUsername, loginUrl, userPoolId, responseData, context);
 
             createAdminUser(adminEmail, adminUsername, userPoolId, responseData, context);
 
@@ -88,16 +88,16 @@ public class UpdateInviteMessageAdminCreationLambdaHandler implements RequestHan
         return null;
     }
 
-    private void updateInviteMessageTemplate(String email, String loginUrl, String userPoolId, Map<String, Object> responseData, Context context) {
+    private void updateInviteMessageTemplate(String username, String loginUrl, String userPoolId, Map<String, Object> responseData, Context context) {
 
         MessageTemplateType inviteMessageTemplate = MessageTemplateType.builder()
                 .emailMessage(("""
-                        Hello {user}, Welcome to our Task Management System!
-                        Your username is %s and temporary password is {####}
+                        Hello %s, Welcome to our Task Management System!
+                        Your username is {username} and temporary password is {####}
 
                         Click here to sign in: %s
                         """)
-                        .formatted(email, loginUrl))
+                        .formatted(username, loginUrl))
                 .emailSubject("Welcome to Task Management System")
                 .build();
 

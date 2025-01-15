@@ -14,6 +14,15 @@ Parameters:
     Description: User pool group name for API administrators
     Type: String
     Default: apiAdmins
+  FrontendLoginUrl:
+    Description: Frontend url for login
+    Type: String
+  AdminEmail:
+    Description: Email address of admin
+    Type: String
+  AdminUsername:
+    Description: Username of admin
+    Type: String
 
 Globals:
   Api:
@@ -540,6 +549,41 @@ Resources:
     Environment:
       Variables:
         TASKS_CLOSED_NOTIFICATION_TOPIC_ARN: !Ref ClosedTasksNotificationTopic
+
+  UpdateInviteMessageAdminCreationLambdaHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: org.umaxcode.UpdateInviteMessageAdminCreationLambdaHandler::handleRequest
+      CodeUri: .
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            Effect: Allow
+            Action:
+              - cognito-idp:UpdateUserPool
+              - cognito-idp:AdminCreateUser
+              - cognito-idp:AdminGetUser
+            Resource: !GetAtt UserPool.Arn
+        - Statement:
+            Effect: Allow
+            Action:
+              - sns:Subscribe
+              - sns:SetSubscriptionAttributes
+            Resource:
+              - !Ref ClosedTasksNotificationTopic
+              - !Ref TaskCompleteNotificationTopic
+
+  UpdateInviteMessageTemplateAndCreateAdminUserCustomResource:
+    Type: Custom::UpdateInviteMessageTemplate
+    Properties:
+      ServiceToken: !GetAtt UpdateInviteMessageAdminCreationLambdaHandler.Arn
+      ServiceTimeout: 30
+      UserPoolId: !Ref UserPool
+      FrontendLoginUrl: !Ref FrontendLoginUrl
+      AdminEmail: !Ref AdminEmail
+      AdminUsername: !Ref AdminUsername
+      TaskCompleteTopicArn: !Ref TaskCompleteNotificationTopic
+      ClosedTaskTopicArn: !Ref ClosedTasksNotificationTopic
 
 Outputs:
   TaskManagementSystemApi:

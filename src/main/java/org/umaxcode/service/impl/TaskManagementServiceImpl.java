@@ -65,9 +65,16 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                 .returnValues("ALL_OLD")
                 .build();
 
-        PutItemResponse putItemResponse = dynamoDbClient.putItem(putRequest);
-        System.out.println("results " + putItemResponse.attributes());
-        return TaskMapper.mapToTaskDto(putItemResponse.attributes());
+        dynamoDbClient.putItem(putRequest);
+        return TaskDto.builder()
+                .id(item.get("taskId").s())
+                .name(request.name())
+                .description(request.description())
+                .status(TaskStatus.OPEN)
+                .responsibility(request.responsibility())
+                .deadline(request.deadline().toString())
+                .assignedBy(email)
+                .build();
     }
 
     @Override

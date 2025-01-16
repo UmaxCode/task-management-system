@@ -53,7 +53,7 @@ public class UserAuthServiceImpl implements UserAuthService {
             System.out.println("User" + response.user());
 
             return UserDto.builder()
-                    .userId(request.username())
+                    .userId(response.user().username())
                     .email(request.email())
                     .username(request.username())
                     .role(Role.USER.toString())

@@ -255,7 +255,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                     .tableName(tasksTableName)
                     .key(key)
                     .updateExpression("SET #name = :name, description = :description")
-                    .conditionExpression("#status = :open")
+                    .conditionExpression("#status = :status")
                     .expressionAttributeValues(Map.of(
                             ":status", AttributeValue.builder().s("open").build(),
                             ":name", AttributeValue.builder().s(request.name()).build(),

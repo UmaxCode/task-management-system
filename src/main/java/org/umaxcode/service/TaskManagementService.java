@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface TaskManagementService {
 
-    void createItem(TasksCreationDto item, String email);
+    TaskDto createItem(TasksCreationDto item, String email);
 
     TaskDto readItem(String id);
 

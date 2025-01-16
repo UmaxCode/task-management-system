@@ -26,9 +26,10 @@ public class TaskManagementController {
     public SuccessResponse createTask(@RequestBody TasksCreationDto request, @AuthenticationPrincipal Jwt jwt) {
 
         String adminEmail = jwt.getClaimAsString("email");
-        taskManagementService.createItem(request, adminEmail);
+        TaskDto createdTask = taskManagementService.createItem(request, adminEmail);
         return SuccessResponse.builder()
                 .message("Task created successfully")
+                .data(createdTask)
                 .build();
     }
 

@@ -46,7 +46,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     @Override
-    public void createItem(TasksCreationDto request, String email) {
+    public TaskDto createItem(TasksCreationDto request, String email) {
 
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("taskId", AttributeValue.builder().s(UUID.randomUUID().toString()).build());
@@ -62,10 +62,12 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         PutItemRequest putRequest = PutItemRequest.builder()
                 .tableName(tasksTableName)
                 .item(item)
+                .returnValues("ALL_OLD")
                 .build();
 
         PutItemResponse putItemResponse = dynamoDbClient.putItem(putRequest);
         System.out.println("results " + putItemResponse.attributes());
+        return TaskMapper.mapToTaskDto(putItemResponse.attributes());
     }
 
     @Override

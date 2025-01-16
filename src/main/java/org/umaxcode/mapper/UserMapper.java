@@ -19,8 +19,15 @@ public class UserMapper {
                         .email(u.attributes().stream()
                                 .filter(a -> "email".equalsIgnoreCase(a.name()))
                                 .map(AttributeType::value)
-                                .findFirst().orElse(null)
-                        )
+                                .findFirst().orElse(null))
+                        .username(u.attributes().stream()
+                                .filter(a -> "name".equalsIgnoreCase(a.name()))
+                                .map(AttributeType::value)
+                                .findFirst().orElse(null))
+                        .role(u.attributes().stream()
+                                .filter(a -> "custom:role".equalsIgnoreCase(a.name()))
+                                .map(AttributeType::value)
+                                .findFirst().orElse(null))
                         .build()
         ).toList();
     }

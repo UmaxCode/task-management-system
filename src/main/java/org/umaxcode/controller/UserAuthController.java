@@ -23,9 +23,10 @@ public class UserAuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public SuccessResponse signup(@RequestBody UserCreationDto request) {
 
-        String message = userAuthService.register(request);
+        UserDto registeredUser = userAuthService.register(request);
         return SuccessResponse.builder()
-                .message(message)
+                .message("User created successfully")
+                .data(registeredUser)
                 .build();
     }
 

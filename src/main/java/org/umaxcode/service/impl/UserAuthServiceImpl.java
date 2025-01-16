@@ -32,7 +32,7 @@ public class UserAuthServiceImpl implements UserAuthService {
     private String userPoolId;
 
     @Override
-    public String register(UserCreationDto request) {
+    public UserDto register(UserCreationDto request) {
 
         try {
             AdminCreateUserRequest adminRequest = AdminCreateUserRequest.builder()
@@ -51,7 +51,14 @@ public class UserAuthServiceImpl implements UserAuthService {
             AdminCreateUserResponse response = cognitoClient.adminCreateUser(adminRequest);
             startStateMachineForSNSSub(request.email());
             System.out.println("User" + response.user());
-            return "User created: " + response.user().username();
+
+            return UserDto.builder()
+                    .userId(request.username())
+                    .email(request.email())
+                    .username(request.username())
+                    .role(Role.USER.toString())
+                    .build();
+
         } catch (CognitoIdentityProviderException e) {
             throw new UserAuthException("Failed to create user: " + e.getMessage());
         }

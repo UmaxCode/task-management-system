@@ -103,7 +103,7 @@ public class TaskManagementController {
 
         TaskDto updatedTask = taskManagementService.reAssignTask(id, request);
         return SuccessResponse.builder()
-                .message("Task comment updated successfully")
+                .message("Task reassigned successfully")
                 .data(updatedTask)
                 .build();
     }
@@ -116,7 +116,7 @@ public class TaskManagementController {
 
         TaskDto updatedTask = taskManagementService.updateTaskDetails(id, request);
         return SuccessResponse.builder()
-                .message("Task comment updated successfully")
+                .message("Task details updated successfully")
                 .data(updatedTask)
                 .build();
     }

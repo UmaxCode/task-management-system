@@ -1,5 +1,6 @@
 package org.umaxcode.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,10 +24,10 @@ public class TaskManagementController {
     @PostMapping
     @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    public SuccessResponse createTask(@RequestBody TasksCreationDto request, @AuthenticationPrincipal Jwt jwt) {
+    public SuccessResponse createTask(@Valid @RequestBody TasksCreationDto request, @AuthenticationPrincipal Jwt jwt) {
 
         String adminEmail = jwt.getClaimAsString("email");
-        TaskDto createdTask = taskManagementService.createItem(request, adminEmail);
+        TaskDto createdTask = taskManagementService.createAndAssignTask(request, adminEmail);
         return SuccessResponse.builder()
                 .message("Task created successfully")
                 .data(createdTask)
@@ -38,7 +39,7 @@ public class TaskManagementController {
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse retrieveTask(@PathVariable("id") String taskId) {
 
-        TaskDto taskDto = taskManagementService.readItem(taskId);
+        TaskDto taskDto = taskManagementService.fetchTask(taskId);
         return SuccessResponse.builder()
                 .message("Task retrieved successfully")
                 .data(taskDto)
@@ -46,7 +47,7 @@ public class TaskManagementController {
     }
 
     @GetMapping("/users/{email}")
-    @PreAuthorize(value= "hasAnyRole('ADMIN', 'USER')")
+    @PreAuthorize(value = "hasAnyRole('ADMIN', 'USER')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse retrieveUserTasks(@PathVariable String email) {
 
@@ -72,7 +73,7 @@ public class TaskManagementController {
     @PatchMapping("/{id}/reopen")
     @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
-    public SuccessResponse reopenTask(@PathVariable("id") String id, @RequestBody TaskReopenDto request) {
+    public SuccessResponse reopenTask(@PathVariable("id") String id, @Valid @RequestBody TaskReopenDto request) {
 
         TaskDto updatedTask = taskManagementService.reopenTask(id, request);
         return SuccessResponse.builder()
@@ -85,7 +86,7 @@ public class TaskManagementController {
     @PreAuthorize(value = "hasRole('USER')")
     @ResponseStatus(HttpStatus.OK)
     public SuccessResponse updateTaskComment(@PathVariable("id") String id,
-                                             @RequestBody TaskCommentUpdateDto request
+                                             @Valid @RequestBody TaskCommentUpdateDto request
     ) {
 
         TaskDto updatedTask = taskManagementService.updateTaskComment(id, request);
@@ -98,7 +99,7 @@ public class TaskManagementController {
     @PatchMapping("/{id}/reassign")
     @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
-    public SuccessResponse reAssignTask(@PathVariable("id") String id, @RequestBody ReassignTaskDto request
+    public SuccessResponse reAssignTask(@PathVariable("id") String id, @Valid @RequestBody ReassignTaskDto request
     ) {
 
         TaskDto updatedTask = taskManagementService.reAssignTask(id, request);
@@ -111,7 +112,7 @@ public class TaskManagementController {
     @PatchMapping("/{id}")
     @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.OK)
-    public SuccessResponse updateTaskDetails(@PathVariable("id") String id, @RequestBody TaskDetailsUpdateDto request
+    public SuccessResponse updateTaskDetails(@PathVariable("id") String id, @Valid @RequestBody TaskDetailsUpdateDto request
     ) {
 
         TaskDto updatedTask = taskManagementService.updateTaskDetails(id, request);

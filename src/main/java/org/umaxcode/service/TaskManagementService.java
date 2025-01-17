@@ -8,9 +8,9 @@ import java.util.List;
 
 public interface TaskManagementService {
 
-    TaskDto createItem(TasksCreationDto item, String email);
+    TaskDto createAndAssignTask(TasksCreationDto item, String email);
 
-    TaskDto readItem(String id);
+    TaskDto fetchTask(String id);
 
     List<TaskDto> getAllTasks();
 

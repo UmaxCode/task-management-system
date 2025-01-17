@@ -46,7 +46,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     @Override
-    public TaskDto createItem(TasksCreationDto request, String email) {
+    public TaskDto createAndAssignTask(TasksCreationDto request, String email) {
 
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("taskId", AttributeValue.builder().s(UUID.randomUUID().toString()).build());
@@ -78,7 +78,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     @Override
-    public TaskDto readItem(String id) {
+    public TaskDto fetchTask(String id) {
 
         Map<String, AttributeValue> key = new HashMap<>();
         key.put("taskId", AttributeValue.builder().s(id).build());

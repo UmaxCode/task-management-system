@@ -71,7 +71,7 @@ The **Task Management System** is designed to streamline task allocation, monito
 ---
 
 ## Architectural Diagram
-![Local Image](ARCHITECTURAL-DIAGRAM.png)
+[Link to architectural diagram](https://drive.google.com/file/d/1hnCXGY69D11RBGM_5vxP1taGss-_BIyE/view?usp=sharing)
 
 ---
 

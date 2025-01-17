@@ -234,7 +234,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                             ":status", AttributeValue.builder().s("open").build(),
                             ":deadline", AttributeValue.builder().s(request.deadline().toString()).build(),
                             ":expired", AttributeValue.builder().s("expired").build(),
-                            ":false", AttributeValue.builder().s("0").build()
+                            ":false", AttributeValue.builder().n("0").build()
                     ))
                     .expressionAttributeNames(Map.of(
                             "#status", "status"

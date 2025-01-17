@@ -62,7 +62,7 @@ public class UpdateInviteMessageAdminCreationLambdaHandler implements RequestHan
                 return null;
             }
 
-            updateInviteMessageTemplate(adminUsername, loginUrl, userPoolId, responseData, context);
+            updateInviteMessageTemplate(loginUrl, userPoolId, responseData, context);
 
             createAdminUser(adminEmail, adminUsername, userPoolId, responseData, context);
 
@@ -88,17 +88,20 @@ public class UpdateInviteMessageAdminCreationLambdaHandler implements RequestHan
         return null;
     }
 
-    private void updateInviteMessageTemplate(String username, String loginUrl, String userPoolId, Map<String, Object> responseData, Context context) {
+    private void updateInviteMessageTemplate(String loginUrl, String userPoolId, Map<String, Object> responseData, Context context) {
 
         MessageTemplateType inviteMessageTemplate = MessageTemplateType.builder()
-                .emailMessage(("""
-                        Hello %s, Welcome to our Task Management System!
-                        Your username is {username} and temporary password is {####}
-
-                        Click here to sign in: %s
-                        """)
-                        .formatted(username, loginUrl))
-                .emailSubject("Welcome to Task Management System")
+                .emailMessage(String.format("""
+                        <html>
+                            <body>
+                                <p> Hello Sir/Madam </p>
+                                <p>Welcome to our Task Management System!</p>
+                                <p>Your username is: <strong>{username}</strong> and your temporary password is: <strong>{####}</strong></p>
+                                <p>Click <a href="%s">here</a> to sign in.</p>
+                            </body>
+                        </html>
+                        """, loginUrl))
+                .emailSubject("Task Management System")
                 .build();
 
         cognitoIdentityProviderClient.updateUserPool(UpdateUserPoolRequest.builder()

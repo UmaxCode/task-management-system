@@ -228,12 +228,13 @@ public class TaskManagementServiceImpl implements TaskManagementService {
             UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
                     .tableName(tasksTableName)
                     .key(key)
-                    .updateExpression("SET #status = :status, deadline = :deadline")
+                    .updateExpression("SET #status = :status, deadline = :deadline, isNotifiedForApproachDeadline = :false")
                     .conditionExpression("#status = :expired")
                     .expressionAttributeValues(Map.of(
                             ":status", AttributeValue.builder().s("open").build(),
                             ":deadline", AttributeValue.builder().s(request.deadline().toString()).build(),
-                            ":expired", AttributeValue.builder().s("expired").build()
+                            ":expired", AttributeValue.builder().s("expired").build(),
+                            ":false", AttributeValue.builder().s("0").build()
                     ))
                     .expressionAttributeNames(Map.of(
                             "#status", "status"

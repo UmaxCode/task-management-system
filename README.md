@@ -1,82 +1,84 @@
-# task-management-system serverless API
-The task-management-system project, created with [`aws-serverless-java-container`](https://github.com/aws/serverless-java-container).
+# Task Management System
 
-The starter project defines a simple `/ping` resource that can accept `GET` requests with its tests.
+## Project Overview
 
-The project folder also includes a `template.yml` file. You can use this [SAM](https://github.com/awslabs/serverless-application-model) file to deploy the project to AWS Lambda and Amazon API Gateway or test in local with the [SAM CLI](https://github.com/awslabs/aws-sam-cli). 
+The **Task Management System** is designed to streamline task allocation, monitoring, and updates for a field team. The system enables an administrator to create and assign tasks, track their progress, and ensure timely completion. Team members can log in to view, update, and complete their tasks, while notifications and deadline tracking ensure efficient workflows.
 
-## Pre-requisites
-* [AWS CLI](https://aws.amazon.com/cli/)
-* [SAM CLI](https://github.com/awslabs/aws-sam-cli)
-* [Gradle](https://gradle.org/) or [Maven](https://maven.apache.org/)
+## Features
 
-## Building the project
-You can use the SAM CLI to quickly build the project
-```bash
-$ mvn archetype:generate -DartifactId=task-management-system -DarchetypeGroupId=com.amazonaws.serverless.archetypes -DarchetypeArtifactId=aws-serverless-jersey-archetype -DarchetypeVersion=2.1.0 -DgroupId=org.umaxcode -Dversion=1.0-SNAPSHOT -Dinteractive=false
-$ cd task-management-system
-$ sam build
-Building resource 'TaskManagementSystemFunction'
-Running JavaGradleWorkflow:GradleBuild
-Running JavaGradleWorkflow:CopyArtifacts
+- **Role-based Access**: Administrators manage all tasks, assignments, and deadlines. Team members only see their assigned tasks.
+- **Notifications**:
+    - Assigned users receive email notifications for task details and deadlines.
+    - Administrators are notified of task completions or deadline breaches.
+- **Task Management**:
+    - Tasks can be created, updated, and reopened.
+    - Tasks include attributes such as name, description, status, responsibility, deadlines, and user comments.
+- **Scalable and Secure Architecture**: Built using AWS serverless services to ensure high availability and scalability.
 
-Build Succeeded
+---
 
-Built Artifacts  : .aws-sam/build
-Built Template   : .aws-sam/build/template.yaml
+## Technical Requirements
 
-Commands you can use next
-=========================
-[*] Invoke Function: sam local invoke
-[*] Deploy: sam deploy --guided
-```
+### Backend
 
-## Testing locally with the SAM CLI
+- **Deployment**:
+    - AWS SAM for backend resources.
+    - Support for test and production environments.
+- **Services Used**:
+    - **Amazon Cognito**: User onboarding and authentication.
+    - **Amazon DynamoDB**: Data storage for tasks and user information. Also utilized DynamoDB Stream
+    - **AWS Lambda**: Business logic implementation.
+    - **Amazon SNS**: Notifications via email for various task-related events.
+    - **Amazon SQS**: Queueing for notifications and processing tasks.
+    - **AWS Step Functions**: Orchestrating workflows for task notifications and updates.
+    - **Amazon Amplify**: Serving the frontend securely and efficiently.
 
-From the project root folder - where the `template.yml` file is located - start the API with the SAM CLI.
+### Frontend
 
-```bash
-$ sam local start-api
+- **Deployment**:
+    - Hosted on **AWS Amplify** with testing and production environment
+- **Continuous Integration/Deployment**:
+    - GitHub integration for automated deployments to Amplify.
+- **Code**:
+    - [Frontend GitHub Repository](https://github.com/UmaxCode/tasks-management-app.git)
 
-...
-Mounting com.amazonaws.serverless.archetypes.StreamLambdaHandler::handleRequest (java11) at http://127.0.0.1:3000/{proxy+} [OPTIONS GET HEAD POST PUT DELETE PATCH]
-...
-```
+---
 
-Using a new shell, you can send a test ping request to your API:
+## Functional Requirements
 
-```bash
-$ curl -s http://127.0.0.1:3000/ping | python -m json.tool
+1. **Task Creation**:
+    - Admin creates tasks with attributes: name, description, status (default: open), responsibility, deadline, and comments.
+2. **Task Assignment**:
+    - Admin assigns tasks to users.
+    - Notifications are sent to assigned users via email using SNS Topic filtering.
+3. **Task Status Updates**:
+    - Team members can update task status (e.g., mark as completed).
+    - Admin is notified of status changes.
+    - Team members can add comment
+4. **Task Deadline Notifications**:
+    - 1 hour before a deadline, users are notified via SNS Topic filtering.
+5. **Task Reopening**:
+    - Only admins can reopen closed tasks, triggering notifications to the assigned user.
+6. **Task Deadline Breaches**:
+    - When a task deadline is missed:
+        - Task status is updated to "expired."
+        - Notifications are sent to the user and admin.
+7. **Reassignment**:
+    - If a task's assigned user is changed:
+        - The task is removed from the old user's list.
+        - The new user is notified.
 
-{
-    "pong": "Hello, World!"
-}
-``` 
+---
 
-## Deploying to AWS
-To deploy the application in your AWS account, you can use the SAM CLI's guided deployment process and follow the instructions on the screen
+## Architectural Diagram
+![Local Image](ARCHITECTURAL-DIAGRAM.png)
 
-```
-$ sam deploy --guided
-```
+---
 
-Once the deployment is completed, the SAM CLI will print out the stack's outputs, including the new application URL. You can use `curl` or a web browser to make a call to the URL
+## Deployment Guidelines
 
-```
-...
--------------------------------------------------------------------------------------------------------------
-OutputKey-Description                        OutputValue
--------------------------------------------------------------------------------------------------------------
-TaskManagementSystemApi - URL for application            https://xxxxxxxxxx.execute-api.us-west-2.amazonaws.com/Prod/pets
--------------------------------------------------------------------------------------------------------------
-```
+### Manual Deployment
+Follow these steps to deploy the project manually.
 
-Copy the `OutputValue` into a browser or use curl to test your first request:
-
-```bash
-$ curl -s https://xxxxxxx.execute-api.us-west-2.amazonaws.com/Prod/ping | python -m json.tool
-
-{
-    "pong": "Hello, World!"
-}
-```
+### Automated Deployment - GITHUB ACTIONS
+Follow these steps to deploy the project manually.

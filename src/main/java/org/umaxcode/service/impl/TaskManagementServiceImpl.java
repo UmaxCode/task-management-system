@@ -46,7 +46,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
     }
 
     @Override
-    public void createItem(TasksCreationDto request, String email) {
+    public TaskDto createAndAssignTask(TasksCreationDto request, String email) {
 
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("taskId", AttributeValue.builder().s(UUID.randomUUID().toString()).build());
@@ -62,14 +62,23 @@ public class TaskManagementServiceImpl implements TaskManagementService {
         PutItemRequest putRequest = PutItemRequest.builder()
                 .tableName(tasksTableName)
                 .item(item)
+                .returnValues("ALL_OLD")
                 .build();
 
-        PutItemResponse putItemResponse = dynamoDbClient.putItem(putRequest);
-        System.out.println("results " + putItemResponse.attributes());
+        dynamoDbClient.putItem(putRequest);
+        return TaskDto.builder()
+                .id(item.get("taskId").s())
+                .name(request.name())
+                .description(request.description())
+                .status(TaskStatus.OPEN)
+                .responsibility(request.responsibility())
+                .deadline(request.deadline().toString())
+                .assignedBy(email)
+                .build();
     }
 
     @Override
-    public TaskDto readItem(String id) {
+    public TaskDto fetchTask(String id) {
 
         Map<String, AttributeValue> key = new HashMap<>();
         key.put("taskId", AttributeValue.builder().s(id).build());
@@ -219,12 +228,13 @@ public class TaskManagementServiceImpl implements TaskManagementService {
             UpdateItemRequest updateItemRequest = UpdateItemRequest.builder()
                     .tableName(tasksTableName)
                     .key(key)
-                    .updateExpression("SET #status = :status, deadline = :deadline")
+                    .updateExpression("SET #status = :status, deadline = :deadline, isNotifiedForApproachDeadline = :false")
                     .conditionExpression("#status = :expired")
                     .expressionAttributeValues(Map.of(
                             ":status", AttributeValue.builder().s("open").build(),
                             ":deadline", AttributeValue.builder().s(request.deadline().toString()).build(),
-                            ":expired", AttributeValue.builder().s("expired").build()
+                            ":expired", AttributeValue.builder().s("expired").build(),
+                            ":false", AttributeValue.builder().n("0").build()
                     ))
                     .expressionAttributeNames(Map.of(
                             "#status", "status"
@@ -255,7 +265,7 @@ public class TaskManagementServiceImpl implements TaskManagementService {
                     .tableName(tasksTableName)
                     .key(key)
                     .updateExpression("SET #name = :name, description = :description")
-                    .conditionExpression("#status = :open")
+                    .conditionExpression("#status = :status")
                     .expressionAttributeValues(Map.of(
                             ":status", AttributeValue.builder().s("open").build(),
                             ":name", AttributeValue.builder().s(request.name()).build(),

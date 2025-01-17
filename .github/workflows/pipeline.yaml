@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'main'
+      - 'dev'
 
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.PIPELINE_USER_ACCESS_KEY_ID}}
@@ -13,7 +14,7 @@ env:
   TESTING_PIPELINE_EXECUTION_ROLE: ${{ secrets.TESTING_PIPELINE_EXECUTION_ROLE }}
   TESTING_CLOUDFORMATION_EXECUTION_ROLE: ${{ secrets.TESTING_CLOUDFORMATION_EXECUTION_ROLE }}
   TESTING_ARTIFACTS_BUCKET: ${{ secrets.TESTING_ARTIFACTS_BUCKET }}
-  TESTING_PARAMETER_OVERRIDES: TasksTableName=tasks,CognitoCallbackURL=https://start.spring.io/,UserPoolAdminGroupName=apiAdmins
+  TESTING_PARAMETER_OVERRIDES: TasksTableName=test-tasks CognitoCallbackURL=https://dev.d2x151q2vf1tfl.amplifyapp.com/auth/callback UserPoolAdminGroupName=apiAdmins FrontendLoginUrl=https://dev.d2x151q2vf1tfl.amplifyapp.com/ AdminEmail=${{ secrets.ADMIN_EMAIL_TEST }} AdminUsername=${{ secrets.ADMIN_USERNAME_TEST }}
   # If there are functions with "Image" PackageType in your template,
   # uncomment the line below and add "--image-repository ${TESTING_IMAGE_REPOSITORY}" to
   # testing "sam package" and "sam deploy" commands.
@@ -23,7 +24,7 @@ env:
   PROD_PIPELINE_EXECUTION_ROLE: ${{ secrets.PROD_PIPELINE_EXECUTION_ROLE }}
   PROD_CLOUDFORMATION_EXECUTION_ROLE: ${{ secrets.PROD_CLOUDFORMATION_EXECUTION_ROLE }}
   PROD_ARTIFACTS_BUCKET: ${{ secrets.PROD_ARTIFACTS_BUCKET }}
-  PRODUCTION_PARAMETER_OVERRIDES: TasksTableName=tasks,CognitoCallbackURL=https://django-rest-framework.org/tutorial/,UserPoolAdminGroupName=apiAdmins
+  PRODUCTION_PARAMETER_OVERRIDES: TasksTableName=prod-tasks CognitoCallbackURL=https://main.d1m5j798vicdd1.amplifyapp.com/auth/callback UserPoolAdminGroupName=apiAdmins FrontendLoginUrl=https://main.d1m5j798vicdd1.amplifyapp.com/ AdminEmail=${{ secrets.ADMIN_EMAIL_PROD }} AdminUsername=${{ secrets.ADMIN_USERNAME_PROD }}
   # If there are functions with "Image" PackageType in your template,
   # uncomment the line below and add "--image-repository ${PROD_IMAGE_REPOSITORY}" to
   # prod "sam package" and "sam deploy" commands.
@@ -191,4 +192,4 @@ jobs:
             --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
             --no-fail-on-empty-changeset \
             --role-arn ${PROD_CLOUDFORMATION_EXECUTION_ROLE} \
-            --parameter-overrides TasksTableName=tasks CognitoCallbackURL=https://django-rest-framework.org/tutorial/ UserPoolAdminGroupName=apiAdmins
+            --parameter-overrides ${PRODUCTION_PARAMETER_OVERRIDES}

@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface UserAuthService {
 
-    String register(UserCreationDto request);
+    UserDto register(UserCreationDto request);
 
     List<UserDto> fetchAllUsers();
 }

@@ -1,5 +1,6 @@
 package org.umaxcode.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,7 +22,7 @@ public class UserAuthController {
     @PostMapping("/signup")
     @PreAuthorize(value = "hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.CREATED)
-    public SuccessResponse signup(@RequestBody UserCreationDto request) {
+    public SuccessResponse signup(@Valid @RequestBody UserCreationDto request) {
 
         UserDto registeredUser = userAuthService.register(request);
         return SuccessResponse.builder()

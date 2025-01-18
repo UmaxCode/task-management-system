@@ -10,6 +10,6 @@ import lombok.Setter;
 public class ErrorMessage {
 
     private String path;
-    private Object message;
+    private String message;
     private String timestamp;
 }

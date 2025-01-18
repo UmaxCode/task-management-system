@@ -62,7 +62,7 @@ public class GlobalExceptionHandler {
 
         return ErrorMessage.builder()
                 .path(request.getRequestURI())
-                .message(errors)
+                .message(errors.toString())
                 .timestamp(LocalDateTime.now().toString())
                 .build();
     }

@@ -539,6 +539,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: org.umaxcode.SendTaskDeadlineNotificationLambdaHandler::handleRequest
+      CodeUri: .
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:
@@ -588,9 +589,9 @@ Resources:
 Outputs:
   TaskManagementSystemApi:
     Description: URL for application
-    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/ping'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
     Export:
-      Name: TaskManagementSystemApi
+      Name: !Sub ${AWS::StackName}-TaskManagementSystemApi
 
   TaskTableName:
     Description: 'The name of the DynamoDB Task table'

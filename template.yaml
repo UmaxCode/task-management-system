@@ -77,7 +77,7 @@ Resources:
   UserPool: # Cognito User Pool
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Sub ${AWS::StackName}-task-management-user-pool
+      UserPoolName: !Sub ${AWS::StackName}-user-pool
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: true
       AutoVerifiedAttributes:
@@ -109,7 +109,7 @@ Resources:
   UserPoolClient: # Cognito User Pool Client
     Type: AWS::Cognito::UserPoolClient
     Properties:
-      ClientName: !Sub ${AWS::StackName}-task-management-user-pool-client
+      ClientName: !Sub ${AWS::StackName}-user-pool-client
       GenerateSecret: true
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthFlows:
@@ -139,7 +139,7 @@ Resources:
   UserPoolDomain: # Cognito User Pool Domain
     Type: AWS::Cognito::UserPoolDomain
     Properties:
-      Domain: !Sub ${AWS::StackName}-task-management-user-pool-domain
+      Domain: !Sub ${AWS::StackName}-user-pool-domain
       UserPoolId: !Ref UserPool
 
   ApiAdministratorsUserPoolGroup: # Cognito User Group for administrators
@@ -591,7 +591,7 @@ Outputs:
     Description: URL for application
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
     Export:
-      Name: !Sub ${AWS::StackName}-TaskManagementSystemApi
+      Name: !Sub ${AWS::StackName}-Api
 
   TaskTableName:
     Description: 'The name of the DynamoDB Task table'

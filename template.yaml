@@ -36,6 +36,7 @@ Resources:
   TaskManagementSystemFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ${AWS::StackName}-APILambda
       Handler: org.umaxcode.StreamLambdaHandler::handleRequest
       CodeUri: .
       Policies:
@@ -66,7 +67,6 @@ Resources:
           TASKS_COMPLETE_NOTIFICATION_TOPIC_ARN: !Ref TaskCompleteNotificationTopic
           TASKS_REOPEN_NOTIFICATION_TOPIC_ARN: !Ref ReopenedTasksNotificationTopic
           TASKS_ASSIGNMENT_NOTIFICATION_TOPIC_ARN: !Ref TasksAssignmentNotificationTopic
-
       Events:
         ProxyResource:
           Type: Api
@@ -185,6 +185,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: .
+      FunctionName: !Sub ${AWS::StackName}-SNSLambda
       Handler: org.umaxcode.SNSTopicSubscriptionHandler::handleRequest
       Policies:
         - AWSLambdaBasicExecutionRole
@@ -227,6 +228,7 @@ Resources:
   StepFunctionsStateMachineSNSSubAndTaskDeadlineNot:
     Type: AWS::StepFunctions::StateMachine
     Properties:
+      StateMachineName: !Sub ${AWS::StackName}-StepFunctionStateMachine
       RoleArn: !GetAtt SNSSubStateMachineRole.Arn
       DefinitionString:
         !Sub |
@@ -411,6 +413,7 @@ Resources:
   SQSDynamodbStreamLambdaSendMessageHandler:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ${AWS::StackName}-DynamoStreamLambda
       Handler: org.umaxcode.SQSDynamodbStreamLambdaSendMessageHandler::handleRequest
       CodeUri: .
       Policies:
@@ -434,6 +437,7 @@ Resources:
   SQSLambdaReadMessageFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ${AWS::StackName}-SQSLambda
       Handler: org.umaxcode.SQSLambdaReadMessageHandler::handleRequest
       CodeUri: .
       Policies:
@@ -497,6 +501,7 @@ Resources:
   CheckTasksDeadlinesFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ${AWS::StackName}-EventBridgeLambda
       Handler: org.umaxcode.EventBridgeCheckDeadlinesHandler::handleRequest
       CodeUri: .
       Policies:
@@ -515,12 +520,13 @@ Resources:
           Type: ScheduleV2
           Properties:
             ScheduleExpression: 'rate(3 minute)'
-            Name: TaskDeadlineChecker
+            Name: !Sub ${AWS::StackName}-TaskDeadlineChecker
             Description: "Help checks the dynamoDB table(tasks) if a task is approaching deadline"
 
   TaskStatusUpdateFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ${AWS::StackName}-TaskStatusUpdateLambda
       Handler: org.umaxcode.TaskStatusUpdateLambdaHandler::handleRequest
       CodeUri: .
       Policies:
@@ -538,6 +544,7 @@ Resources:
   SendTaskDeadlineNotificationFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ${AWS::StackName}-TaskDeadlineLambda
       Handler: org.umaxcode.SendTaskDeadlineNotificationLambdaHandler::handleRequest
       CodeUri: .
       Policies:
@@ -554,6 +561,7 @@ Resources:
   UpdateInviteMessageAdminCreationLambdaHandler:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub ${AWS::StackName}-InviteAdminLambda
       Handler: org.umaxcode.UpdateInviteMessageAdminCreationLambdaHandler::handleRequest
       CodeUri: .
       Policies:
@@ -591,7 +599,7 @@ Outputs:
     Description: URL for application
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
     Export:
-      Name: !Sub ${AWS::StackName}-Api
+      Name: TaskManagementSystemApi
 
   TaskTableName:
     Description: 'The name of the DynamoDB Task table'

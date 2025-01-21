@@ -96,7 +96,7 @@ public class UpdateInviteMessageAdminCreationLambdaHandler implements RequestHan
                             <body>
                                 <p> Hello Sir/Madam </p>
                                 <p>Welcome to our Task Management System!</p>
-                                <p>Your username is: <strong>{username}</strong> and your temporary password is: <strong>{####}</strong></p>
+                                <p>Your email is: <strong>{username}</strong> and your temporary password is: <strong>{####}</strong></p>
                                 <p>Click <a href="%s">here</a> to sign in.</p>
                             </body>
                         </html>
